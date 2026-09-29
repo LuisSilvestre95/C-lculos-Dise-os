@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="TODO GAS SYR S.A.S. — Cálculo, predicción y memoria técnica de redes de gas natural y GLP en baja y media presión (Renouard).">
+<meta name="theme-color" content="#023047">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TODO GAS">
+<title>TODO GAS SYR · Cálculos de Gas</title>
+<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="css/app.css">
+<script>
+  // Aplica el tema antes de pintar para evitar parpadeo.
+  try { var t = localStorage.getItem('tgs-theme'); if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+</head>
+<body data-mode="baja">
+
+<!-- Sprite de iconos -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M12 14l4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-7"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2z"/><path d="M19 3v4M17 5h4"/></symbol>
+    <symbol id="i-wand" viewBox="0 0 24 24"><path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8L19 13M17.8 6.2L19 5M3 21l9-9M12.2 6.2L11 5"/></symbol>
+    <symbol id="i-pdf" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15h6M9 18h4M9 12h2"/></symbol>
+    <symbol id="i-table" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="i-print" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+    <symbol id="i-calc" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9z"/></symbol>
+    <symbol id="i-install" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+    <symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/><path d="M7 15h10"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></symbol>
+  </defs>
+</svg>
+
+<header class="app-header">
+  <div class="wrap header-inner">
+    <div class="brand">
+      <img class="brand-logo" src="assets/flame.png" alt="" width="46" height="54" decoding="async">
+      <div class="brand-text">
+        <h1>TODO GAS SYR <span>S.A.S.</span></h1>
+        <p>Cálculo y predicción de redes de gas natural y GLP</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="installBtn" hidden title="Instalar aplicación" aria-label="Instalar aplicación"><svg><use href="#i-install"/></svg></button>
+      <button class="icon-btn" id="themeBtn" title="Cambiar tema claro/oscuro" aria-label="Cambiar tema"><svg class="only-light"><use href="#i-moon"/></svg><svg class="only-dark"><use href="#i-sun"/></svg></button>
+    </div>
+  </div>
+  <div class="wrap">
+    <nav class="mode-switch" role="tablist" aria-label="Régimen de presión">
+      <button role="tab" class="mode-btn" data-mode="baja" aria-selected="true">
+        <svg><use href="#i-down"/></svg><span><b>Baja presión</b><small>Renouard lineal · ≤ 100 mbar</small></span>
+      </button>
+      <button role="tab" class="mode-btn" data-mode="media" aria-selected="false">
+        <svg><use href="#i-up"/></svg><span><b>Media presión</b><small>Renouard cuadrática · 100–5000 mbar</small></span>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap main">
+
+  <!-- ESTADO GLOBAL -->
+  <section class="hero" id="hero" aria-live="polite">
+    <div class="hero-status" id="heroStatus">
+      <div class="hero-icon"><svg><use href="#i-gauge"/></svg></div>
+      <div>
+        <div class="hero-label">Estado de la red</div>
+        <div class="hero-value" id="heroValue">Sin datos</div>
+        <div class="hero-sub" id="heroSub">Agregue tramos para iniciar el cálculo</div>
+      </div>
+    </div>
+    <div class="kpis" id="kpis">
+      <div class="kpi"><span>Presión mínima</span><strong id="kPf">—</strong><small id="kPfNode">nodo crítico</small></div>
+      <div class="kpi"><span>Caída total</span><strong id="kDrop">—</strong><small id="kDropPct">—</small></div>
+      <div class="kpi"><span>Velocidad máx.</span><strong id="kVel">—</strong><small id="kVelLim">—</small></div>
+      <div class="kpi"><span>Tramos aprobados</span><strong id="kOk">—</strong><small id="kQ">—</small></div>
+    </div>
+  </section>
+
+  <div class="grid-2">
+    <!-- PARÁMETROS -->
+    <section class="card">
+      <h2 class="card-title"><svg><use href="#i-sliders"/></svg>Parámetros de diseño</h2>
+      <div class="card-body">
+        <div class="fields">
+          <div class="field span-2">
+            <label for="city"><svg><use href="#i-pin"/></svg>Municipio</label>
+            <select id="city"></select>
+            <small id="cityHint">La presión atmosférica se calcula con la altitud (atmósfera estándar ISA).</small>
+          </div>
+          <div class="field">
+            <label for="altitude">Altitud (m s. n. m.)</label>
+            <input id="altitude" type="text" inputmode="decimal" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="patm">Presión atmosférica (mbar)</label>
+            <input id="patm" type="text" inputmode="decimal" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="gas">Tipo de gas</label>
+            <select id="gas"></select>
+          </div>
+          <div class="field">
+            <label for="G">Densidad relativa (S)</label>
+            <input id="G" type="text" inputmode="decimal" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="pi">Presión de suministro (mbar)</label>
+            <input id="pi" type="text" inputmode="decimal" autocomplete="off">
+            <small id="piHint"></small>
+          </div>
+          <div class="field">
+            <label for="factorLE">Factor longitud equivalente</label>
+            <input id="factorLE" type="text" inputmode="decimal" autocomplete="off">
+            <small>Le = L × factor (accesorios)</small>
+          </div>
+        </div>
+        <details class="criteria">
+          <summary><svg><use href="#i-check"/></svg>Criterios de aceptación</summary>
+          <div class="fields three">
+            <div class="field"><label for="pmin">Presión mínima final (mbar)</label><input id="pmin" type="text" inputmode="decimal"></div>
+            <div class="field"><label for="vmax">Velocidad máxima (m/s)</label><input id="vmax" type="text" inputmode="decimal"></div>
+            <div class="field"><label for="maxLoss">Pérdida máx. por tramo (%)</label><input id="maxLoss" type="text" inputmode="decimal"></div>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <!-- CLIENTE -->
+    <section class="card">
+      <h2 class="card-title"><svg><use href="#i-user"/></svg>Cliente y proyecto</h2>
+      <div class="card-body">
+        <div class="fields">
+          <div class="field span-2"><label for="cName">Nombre / razón social</label><input id="cName" data-client="name" placeholder="Nombre completo" autocomplete="name"></div>
+          <div class="field"><label for="cId">Cédula / NIT</label><input id="cId" data-client="id" placeholder="Ej. 79.295.777"></div>
+          <div class="field"><label for="cPhone">Teléfono</label><input id="cPhone" data-client="phone" placeholder="Ej. 322 361 8360" inputmode="tel" autocomplete="tel"></div>
+          <div class="field span-2"><label for="cAddress">Dirección de la instalación</label><input id="cAddress" data-client="address" placeholder="Dirección" autocomplete="street-address"></div>
+          <div class="field"><label for="cCity">Municipio</label><input id="cCity" data-client="city" placeholder="Municipio"></div>
+          <div class="field"><label for="cRef">N.º de proyecto / informe</label><input id="cRef" data-client="ref" placeholder="Ej. TGS-2026-001"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- TRAMOS -->
+  <section class="card">
+    <h2 class="card-title accent"><svg><use href="#i-route"/></svg><span id="segTitle">Tramos de la red</span>
+      <span class="title-actions">
+        <button class="chip-btn" id="flowCalcBtn" type="button"><svg><use href="#i-calc"/></svg>Caudal por potencia</button>
+        <button class="chip-btn" id="exampleBtn" type="button"><svg><use href="#i-flask"/></svg>Ejemplo</button>
+      </span>
+    </h2>
+    <div class="card-body">
+      <div class="seg-table" id="segTable" role="table" aria-label="Tramos">
+        <div class="seg-head" role="row">
+          <span>#</span><span>Inicio</span><span>Fin</span><span>Caudal<br><i>m³/h</i></span><span>Longitud<br><i>m</i></span>
+          <span>Material</span><span>Diámetro</span><span>Ø int.<br><i>mm</i></span><span>Resultado</span><span></span>
+        </div>
+        <div id="segBody"></div>
+      </div>
+      <div class="notice" id="netNotice" hidden></div>
+      <div class="row-actions">
+        <button class="btn btn-primary" id="addBtn" type="button"><svg><use href="#i-plus"/></svg>Agregar tramo</button>
+        <button class="btn btn-ghost" id="autoBtn" type="button"><svg><use href="#i-wand"/></svg>Dimensionar automáticamente</button>
+        <button class="btn btn-ghost danger" id="clearBtn" type="button"><svg><use href="#i-trash"/></svg>Limpiar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULTADOS -->
+  <section class="card">
+    <h2 class="card-title accent"><svg><use href="#i-table"/></svg>Resultados del cálculo</h2>
+    <div class="card-body">
+      <div class="table-scroll">
+        <table class="res-table" id="resTable">
+          <thead id="resHead"></thead>
+          <tbody id="resBody"></tbody>
+        </table>
+      </div>
+      <p class="legend-line"><span class="st ok"><svg><use href="#i-check"/></svg>Cumple</span><span class="st warn"><svg><use href="#i-alert"/></svg>≥ 80 % del límite</span><span class="st bad"><svg><use href="#i-x"/></svg>No cumple</span></p>
+    </div>
+  </section>
+
+  <!-- PREDICCIONES -->
+  <section class="card">
+    <h2 class="card-title"><svg><use href="#i-spark"/></svg>Predicciones y análisis</h2>
+    <div class="card-body">
+      <div class="pred-grid">
+        <div class="pred-tile"><span>Crecimiento de demanda admisible</span><strong id="pGrowth">—</strong><small>antes del primer rechazo</small></div>
+        <div class="pred-tile"><span>Presión mínima de suministro</span><strong id="pSupply">—</strong><small>para aprobar toda la red</small></div>
+        <div class="pred-tile"><span>Caudal total en la fuente</span><strong id="pQ">—</strong><small id="pQpow">—</small></div>
+        <div class="pred-tile"><span>Longitud total instalada</span><strong id="pL">—</strong><small id="pLe">—</small></div>
+      </div>
+
+      <div class="simulator">
+        <div class="sim-head">
+          <label for="demand"><svg><use href="#i-bolt"/></svg>Simulador de demanda futura</label>
+          <output id="demandOut">100 %</output>
+        </div>
+        <input type="range" id="demand" min="25" max="250" step="5" value="100" aria-describedby="demandRes">
+        <div class="sim-scale"><span>25 %</span><span>100 % (actual)</span><span>250 %</span></div>
+        <p class="sim-result" id="demandRes">—</p>
+      </div>
+
+      <div class="charts">
+        <figure class="chart-card">
+          <figcaption><b>Perfil de presión</b><span>Ruta crítica desde la fuente (mbar vs. distancia equivalente)</span></figcaption>
+          <div class="chart-box"><canvas id="chProfile" role="img" aria-label="Perfil de presión"></canvas></div>
+        </figure>
+        <figure class="chart-card">
+          <figcaption><b>Velocidad por tramo</b><span>m/s frente al límite admisible</span></figcaption>
+          <div class="chart-box"><canvas id="chVel" role="img" aria-label="Velocidad por tramo"></canvas></div>
+        </figure>
+        <figure class="chart-card wide">
+          <figcaption><b>Curva de predicción</b><span>Presión mínima en la red según el % de demanda</span></figcaption>
+          <div class="chart-box"><canvas id="chCurve" role="img" aria-label="Curva de predicción"></canvas></div>
+        </figure>
+      </div>
+
+      <h3 class="sub-title"><svg><use href="#i-info"/></svg>Recomendaciones automáticas</h3>
+      <ul class="reco" id="reco"></ul>
+    </div>
+  </section>
+
+  <!-- EXPORTAR -->
+  <section class="card export-card">
+    <h2 class="card-title"><svg><use href="#i-pdf"/></svg>Exportar y guardar</h2>
+    <div class="card-body export-grid">
+      <button class="xbtn x-pdf" id="pdfBtn" type="button"><svg><use href="#i-pdf"/></svg><b>Memoria de cálculo PDF</b><small>Alta calidad · vectorial · con gráficas y firma</small></button>
+      <button class="xbtn x-share" id="shareBtn" type="button"><svg><use href="#i-share"/></svg><b>Compartir PDF</b><small>WhatsApp, correo, Drive…</small></button>
+      <button class="xbtn x-csv" id="csvBtn" type="button"><svg><use href="#i-table"/></svg><b>Excel (CSV)</b><small>Tabla de resultados completa</small></button>
+      <button class="xbtn x-save" id="saveBtn" type="button"><svg><use href="#i-save"/></svg><b>Guardar proyecto</b><small>Archivo .json reutilizable</small></button>
+      <label class="xbtn x-open" for="openFile"><svg><use href="#i-folder"/></svg><b>Abrir proyecto</b><small>Cargar archivo .json</small><input type="file" id="openFile" accept=".json,application/json" hidden></label>
+      <button class="xbtn x-print" id="printBtn" type="button"><svg><use href="#i-print"/></svg><b>Imprimir</b><small>Vista de impresión</small></button>
+    </div>
+  </section>
+
+  <!-- FÓRMULAS -->
+  <details class="card formulas">
+    <summary class="card-title"><svg><use href="#i-book"/></svg>Fórmulas y bases de cálculo</summary>
+    <div class="card-body formula-body">
+      <div class="formula"><b>Baja presión — Renouard lineal</b><code>ΔP = 23 200 · S · Le · Q<sup>1.82</sup> · D<sup>−4.82</sup></code><small>ΔP en mbar · Le en m · Q en m³/h · D interno en mm</small></div>
+      <div class="formula"><b>Media presión — Renouard cuadrática</b><code>P₁² − P₂² = 48 600 · S · Le · Q<sup>1.82</sup> · D<sup>−4.82</sup></code><small>P absolutas en bar, Le en km (equivale a 4.86·10⁷ con P en mbar y Le en m)</small></div>
+      <div class="formula"><b>Velocidad del gas</b><code>V = 354 · Q / (P<sub>abs</sub> · D²)</code><small>V en m/s · P absoluta en bar al final del tramo · D en mm</small></div>
+      <div class="formula"><b>Longitud equivalente</b><code>Le = L × factor</code><small>Factor 1.2 = 20 % adicional por accesorios</small></div>
+      <div class="formula"><b>Presión atmosférica (ISA)</b><code>P<sub>atm</sub> = 1013.25 · (1 − 2.25577·10⁻⁵ · h)<sup>5.25588</sup></code><small>h = altitud en m s. n. m.</small></div>
+      <div class="formula"><b>Caudal por potencia</b><code>Q = Potencia / PCS</code><small>PCS GN ≈ 10.35 kWh/m³ · GLP ≈ 26 kWh/m³</small></div>
+      <p class="formula-note">Referencias: NTC 2505 (instalaciones para suministro de gas en edificaciones), NTC 3838 (presiones de operación), Resolución 90902 de 2013 (RETIGAS). Los criterios de aceptación son editables según el proyecto y la exigencia del distribuidor.</p>
+    </div>
+  </details>
+</main>
+
+<footer class="app-footer">
+  <div class="wrap footer-inner">
+    <img src="assets/flame.png" alt="" width="30" height="35" loading="lazy">
+    <div>
+      <p><b>TODO GAS SYR S.A.S.</b> · NIT 901.126.243-3 · Colombia</p>
+      <p>Diseño y cálculos: Luis Silvestre Supelano Beltrán · Ingeniero MP 041122-0809747 BYC — COPNIA</p>
+      <p>Tel. 322 361 8360 · 320 948 5534 · © 2026</p>
+    </div>
+  </div>
+</footer>
+
+<!-- Modal genérico -->
+<div class="modal-back" id="modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h3 id="modalTitle"></h3>
+    <div id="modalBody"></div>
+    <div class="modal-actions" id="modalActions"></div>
+  </div>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div class="busy" id="busy" hidden><div class="spinner"></div><p id="busyText">Generando PDF…</p></div>
+
+<script src="js/engine.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/pdf.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
