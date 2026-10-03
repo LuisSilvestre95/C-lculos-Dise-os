@@ -1,7 +1,7 @@
 {
   "name": "TODO GAS SYR · Cálculos de Gas",
   "short_name": "TODO GAS",
-  "description": "Cálculo, predicción y memoria técnica de redes de gas natural y GLP (Renouard).",
+  "description": "Cálculo y memoria técnica de redes de gas natural y GLP (Renouard).",
   "lang": "es-CO",
   "start_url": "./",
   "scope": "./",

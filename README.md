@@ -1,6 +1,6 @@
-# TODO GAS SYR S.A.S. — Cálculo y predicción de redes de gas
+# TODO GAS SYR S.A.S. — Cálculo de redes de gas
 
-Aplicación web para calcular, predecir y documentar redes de **gas natural y GLP** en **baja presión** (Renouard lineal) y **media presión** (Renouard cuadrática). Funciona en PC con Windows o macOS, en celulares Android y iPhone y en tabletas. No necesita internet.
+Aplicación web para calcular y documentar redes de **gas natural y GLP** en **baja presión** (Renouard lineal) y **media presión** (Renouard cuadrática). Funciona en PC con Windows o macOS, en celulares Android y iPhone y en tabletas. No necesita internet.
 
 ## Cómo usarla
 
@@ -11,23 +11,13 @@ Aplicación web para calcular, predecir y documentar redes de **gas natural y GL
 
 ## Qué hace
 
-- **Cálculo por tramo**: pérdida de carga, presión final, velocidad, % de pérdida y estado (aprobado o rechazado). Admite **redes ramificadas**: cada ramal parte de la presión de su nodo.
-- **Validaciones**: balance de caudales, ciclos, nodos con doble alimentación y datos faltantes.
-- **Predicciones**:
-  - diámetro comercial mínimo que cumple (Ø sugerido);
-  - caudal máximo y longitud máxima admisibles por tramo;
-  - crecimiento de demanda que admite la red;
-  - presión mínima de suministro requerida;
-  - curva de demanda del 25 % al 250 % y simulador de demanda futura.
-- **Dimensionamiento automático**: usa el método de pérdida unitaria sobre la ruta más larga y luego ajusta hasta que la red cumple. Se puede deshacer.
-- **Caudal por potencia**: convierte kW, BTU/h, kcal/h o MJ/h a m³/h.
-- **Municipios de Colombia**: la presión atmosférica se calcula a partir de la altitud (atmósfera estándar ISA).
-- **Exportación**:
-  - memoria de cálculo en **PDF** vectorial, con logo, gráficas a unos 300 ppp y firma;
-  - **Compartir** el PDF (WhatsApp, correo, Drive);
-  - **CSV para Excel** en formato de Colombia;
-  - guardar y abrir proyectos en `.json`;
-  - imprimir.
+- **Baja y media presión**, con gas natural, GLP (propano, butano o mezcla 60/40) u otro gas con densidad manual.
+- **Tuberías**: PE-AL-PE, polietileno PE100 (IPS y métrico SDR 11), PE80, acero Sch 40, acero galvanizado, cobre tipo L y diámetro manual.
+- **Tramos automáticos**: cada tramo nuevo empieza donde terminó el anterior, con el siguiente nodo, el mismo material y el mismo diámetro. Con **Enter** se pasa de campo en campo y, al final del último tramo, se crea el siguiente. Admite redes con ramales.
+- **Cálculo al instante** de pérdida, presión final, velocidad y estado (aprobado o rechazado, con el motivo).
+- **Elegir diámetros automáticamente**: busca los diámetros comerciales para que toda la red cumpla. Se puede deshacer.
+- **Caudal por potencia** de gasodomésticos y presión atmosférica según el municipio.
+- **Exportación**: PDF con logo, resultados del cálculo, gráficas y firma; compartir el PDF; CSV para Excel; guardar y abrir proyectos; imprimir.
 - Modo claro y oscuro. Los datos se guardan automáticamente en el dispositivo.
 
 ## Fórmulas

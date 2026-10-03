@@ -146,30 +146,9 @@
     doc.text(T(`${s.approved} de ${s.total} tramos cumplen`), xC + wC / 2, y + 28.5, { align: 'center' });
     doc.text(T(`Nodo crítico: ${s.criticalNode}`), xC + wC / 2, y + 33, { align: 'center' });
 
-    // KPIs
-    y += hC + 5;
-    const growth = d.net.growth;
-    const kpis = [
-      ['Presión mínima', `${fmt(s.pfMin, 2)}`, 'mbar', Number.isFinite(s.pfMin) && s.pfMin < crit.pmin],
-      ['Caída total', `${fmt(s.totalLoss, 2)}`, `mbar · ${fmt(s.totalLossPct, 1)} %`, false],
-      ['Velocidad máxima', `${fmt(s.vMax, 2)}`, `m/s · límite ${crit.vmax}`, s.vMax > crit.vmax],
-      ['Caudal en la fuente', `${fmt(s.qSource, 2)}`, 'm³/h', false],
-      ['Crecimiento admisible', Number.isFinite(growth) ? (growth >= 20 ? '>1900' : `${growth >= 1 ? '+' : ''}${fmt((growth - 1) * 100, 0)}`) : '-', '% de demanda', Number.isFinite(growth) && growth < 1],
-      ['P. mín. suministro', fmt(d.net.supply, 2), 'mbar requeridos', Number.isFinite(d.net.supply) && d.net.supply > p.pi]
-    ];
-    const kw = (W - 2 * M - 5 * 4) / 6, kh = 19;
-    kpis.forEach(([lab, val, unit, bad], i) => {
-      const x = M + i * (kw + 4);
-      doc.setFillColor(...C.white); doc.setDrawColor(...C.line); doc.setLineWidth(0.25); doc.roundedRect(x, y, kw, kh, 2, 2, 'FD');
-      hGrad(doc, x + 1, y, kw - 2, 1.2, [[0, accent2], [1, accent]], 20);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(6.6); doc.setTextColor(...C.muted); doc.text(T(lab.toUpperCase()), x + 3, y + 5.6);
-      doc.setFontSize(14); doc.setTextColor(...(bad ? C.bad : C.ink)); doc.text(T(val), x + 3, y + 12.8);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(6.8); doc.setTextColor(...C.ink2); doc.text(T(unit), x + 3, y + 16.8);
-    });
-
     // Tabla de resultados
-    y += kh + 8;
-    y = sectionTitle('Detalle de cálculo por tramo', y);
+    y += hC + 9;
+    y = sectionTitle('Resultados del cálculo', y);
     const cols = d.table.cols.map(([a, b]) => T(a) + (b ? '\n' + T(b) : ''));
     const statusIdx = cols.findIndex((c) => c.startsWith('Estado'));
     const body = d.table.rows.map(({ r, cells }) => {
@@ -179,8 +158,8 @@
     doc.autoTable({
       startY: y, margin: { left: M, right: M, top: 22, bottom: 16 }, head: [cols], body,
       theme: 'grid',
-      styles: { font: 'helvetica', fontSize: media ? 6.9 : 7.6, cellPadding: { top: 1.7, bottom: 1.7, left: 1.2, right: 1.2 }, halign: 'center', valign: 'middle', lineColor: C.line, lineWidth: 0.2, textColor: C.ink, overflow: 'linebreak' },
-      headStyles: { fillColor: accent, textColor: C.white, fontStyle: 'bold', fontSize: media ? 6.6 : 7, lineColor: mix(accent, C.white, 0.35), minCellHeight: 9 },
+      styles: { font: 'helvetica', fontSize: media ? 7.6 : 8, cellPadding: { top: 2, bottom: 2, left: 1.2, right: 1.2 }, halign: 'center', valign: 'middle', lineColor: C.line, lineWidth: 0.2, textColor: C.ink, overflow: 'linebreak' },
+      headStyles: { fillColor: accent, textColor: C.white, fontStyle: 'bold', fontSize: media ? 7.2 : 7.6, lineColor: mix(accent, C.white, 0.35), minCellHeight: 9 },
       alternateRowStyles: { fillColor: C.wash },
       columnStyles: { 0: { fontStyle: 'bold' } },
       didParseCell: (h) => {
@@ -193,7 +172,6 @@
           if (raw.cls === 'c-bad') { h.cell.styles.fillColor = C.badBg; h.cell.styles.textColor = C.bad; h.cell.styles.fontStyle = 'bold'; }
           else if (raw.cls === 'c-warn') { h.cell.styles.fillColor = C.warnBg; h.cell.styles.textColor = C.warn; h.cell.styles.fontStyle = 'bold'; }
           else if (raw.cls === 'c-ok') { h.cell.styles.textColor = C.ok; h.cell.styles.fontStyle = 'bold'; }
-          else if (raw.cls === 'pred') { h.cell.styles.textColor = media ? C.navy2 : hex('#9a4a00'); h.cell.styles.fontStyle = 'bold'; }
           else if (raw.cls === 'muted') { h.cell.styles.textColor = C.muted; }
         }
       },
@@ -202,92 +180,32 @@
     y = doc.lastAutoTable.finalY + 4;
     doc.setFont('helvetica', 'normal'); doc.setFontSize(6.8); doc.setTextColor(...C.muted);
     const note = media
-      ? 'P1/P2: presiones manométricas; P abs = P + Patm. dP man = (P1 - P2)/P1. Ø sugerido: menor diámetro comercial del mismo material que cumple todos los criterios. Q máx: caudal admisible con el diámetro actual.'
-      : 'Pi/Pf: presiones manométricas en mbar. dP % = pérdida del tramo / Pi. Ø sugerido: menor diámetro comercial del mismo material que cumple todos los criterios. Q máx: caudal admisible con el diámetro actual.';
+      ? `Renouard cuadrática con presiones absolutas (P abs = P + ${fmt(p.patm, 1)} mbar). Le = L × ${fmt(p.factorLE, 2)}. Criterios: V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %${crit.pmin > 0 ? ` · P2 >= ${crit.pmin} mbar` : ''}.`
+      : `Renouard lineal: dP = 23 200 · S · Le · Q^1.82 · D^-4.82. Le = L × ${fmt(p.factorLE, 2)}. Criterios: Pf >= ${crit.pmin} mbar · V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %.`;
     doc.text(T(note), M, y + 1, { maxWidth: W - 2 * M });
 
-    /* ===== PÁGINA 2: GRÁFICAS ===== */
+    /* ===== PÁGINA 2: GRÁFICAS + FIRMA ===== */
     doc.addPage(); headerSmall();
     y = 24;
-    y = sectionTitle('Análisis gráfico', y);
+    y = sectionTitle('Gráficas', y);
     const Charts = root.Charts;
-    const cw = (W - 2 * M - 6) / 2, ch = 72;
+    const cw = (W - 2 * M - 6) / 2, ch = 112;
     const drawChart = (spec, x, yy, w, h, title, sub) => {
       doc.setFillColor(...C.white); doc.setDrawColor(...C.line); doc.setLineWidth(0.25); doc.roundedRect(x, yy, w, h, 2.2, 2.2, 'FD');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...C.ink); doc.text(T(title), x + 4, yy + 6);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...C.muted); doc.text(T(sub), x + 4, yy + 10);
+      hGrad(doc, x + 2, yy, w - 4, 1.2, [[0, accent2], [1, accent]], 30);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...C.ink); doc.text(T(title), x + 4, yy + 7);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.2); doc.setTextColor(...C.muted); doc.text(T(sub), x + 4, yy + 11.5);
       if (spec.empty) { doc.setFontSize(8.5); doc.text(T(spec.emptyText || 'Sin datos'), x + w / 2, yy + h / 2, { align: 'center' }); return; }
-      const pw = w - 6, ph = h - 14, pxPerMm = 3.78;
-      const img = Charts.toPNG({ ...spec, fontScale: 1 }, pw * pxPerMm, ph * pxPerMm, 3.2);
-      doc.addImage(img, 'PNG', x + 3, yy + 12, pw, ph, undefined, 'FAST');
+      const pw = w - 6, ph = h - 16, pxPerMm = 3.2;
+      const img = Charts.toPNG({ ...spec, fontScale: 1 }, pw * pxPerMm, ph * pxPerMm, 3.6);
+      doc.addImage(img, 'PNG', x + 3, yy + 14, pw, ph, undefined, 'FAST');
     };
-    drawChart(d.specs.profile, M, y, cw, ch, 'Perfil de presión (ruta crítica)', 'Presión manométrica en cada nodo vs. distancia equivalente desde la fuente');
-    drawChart(d.specs.vel, M + cw + 6, y, cw, ch, 'Velocidad por tramo', 'Barras en rojo/ámbar: superan o se acercan (>= 80 %) al límite admisible');
-    y += ch + 6;
-    drawChart(d.specs.curve, M, y, W - 2 * M, 78, 'Curva de predicción de demanda', 'Presión mínima de la red al variar la demanda del 25 % al 250 % · zona sombreada = rechazo');
-
-    /* ===== PÁGINA 3: PREDICCIONES, RECOMENDACIONES, FÓRMULAS, FIRMA ===== */
-    doc.addPage(); headerSmall();
-    y = 24;
-    y = sectionTitle('Predicciones por tramo', y);
-    const pbody = d.res.rows.map((r, i) => {
-      const pr = d.preds[i];
-      if (!r.valid || !pr) return [T(`${r.ini}-${r.fin}`), { content: 'Datos incompletos', colSpan: 7, styles: { textColor: C.muted } }];
-      const cur = d.pipes[r.mat] && d.pipes[r.mat].sizes.find((z) => z.dn === r.dn);
-      return [T(`${r.ini}-${r.fin}`), fmt(r.q, 2), fmt(pr.qMax, 2), Number.isFinite(pr.qMargin) ? `${pr.qMargin >= 0 ? '+' : ''}${fmt(pr.qMargin, 0)} %` : '-', fmt(pr.lMax, 1), fmt(pr.vUse, 0) + ' %',
-        T(cur ? `${cur.label} (${fmt(cur.di, 1)} mm)` : `${fmt(r.d, 1)} mm`), T(pr.suggested ? `${pr.suggested.label} (${fmt(pr.suggested.di, 1)} mm)` : Number.isFinite(pr.dMin) ? `>= ${fmt(pr.dMin, 1)} mm` : 'No posible')];
-    });
-    doc.autoTable({
-      startY: y, margin: { left: M, right: M, top: 22, bottom: 16 },
-      head: [['Tramo', 'Q actual\nm³/h', 'Q máximo\nm³/h', 'Margen de\ncaudal', 'L máxima\nm', 'Uso de\nvelocidad', 'Diámetro actual', 'Diámetro mínimo que cumple']],
-      body: pbody, theme: 'grid',
-      styles: { fontSize: 7.6, cellPadding: 1.6, halign: 'center', valign: 'middle', lineColor: C.line, lineWidth: 0.2, textColor: C.ink },
-      headStyles: { fillColor: C.navy, textColor: C.white, fontStyle: 'bold', fontSize: 7.2 },
-      alternateRowStyles: { fillColor: C.wash }, columnStyles: { 0: { fontStyle: 'bold' } },
-      didParseCell: (h) => {
-        if (h.section !== 'body') return;
-        if (h.column.index === 3 && typeof h.cell.raw === 'string' && h.cell.raw.startsWith('-')) { h.cell.styles.textColor = C.bad; h.cell.styles.fontStyle = 'bold'; }
-        if (h.column.index === 5) { const v = parseFloat(h.cell.raw); if (v > 100) { h.cell.styles.textColor = C.bad; h.cell.styles.fontStyle = 'bold'; } else if (v >= 80) { h.cell.styles.textColor = C.warn; h.cell.styles.fontStyle = 'bold'; } }
-      },
-      didDrawPage: (h) => { if (h.pageNumber > 1) headerSmall(); }
-    });
-    y = doc.lastAutoTable.finalY + 8;
-
-    const ensure = (need) => { if (y + need > H - 18) { doc.addPage(); headerSmall(); y = 24; } };
-    // Recomendaciones
-    ensure(20);
-    y = sectionTitle('Recomendaciones y observaciones', y) + 2;
-    const icoCol = { ok: C.ok, bad: C.bad, warn: C.warn, info: C.cyan };
-    d.recos.forEach((rc) => {
-      const lines = doc.setFontSize(8).splitTextToSize(T(rc.t), W - 2 * M - 8);
-      ensure(lines.length * 3.8 + 2);
-      doc.setFillColor(...icoCol[rc.k]); doc.circle(M + 2, y - 1, 1.2, 'F');
-      doc.setFont('helvetica', 'normal'); doc.setTextColor(...C.ink); doc.text(lines, M + 6, y);
-      y += lines.length * 3.8 + 1.8;
-    });
-
-    // Fórmulas
-    y += 4; ensure(44);
-    y = sectionTitle('Bases de cálculo', y);
-    const formulas = [
-      ['Pérdida de carga', media ? 'P1² - P2² = 48 600 · S · Le · Q^1.82 · D^-4.82  (P abs en bar, Le en km, Q en m³/h, D en mm)' : 'dP = 23 200 · S · Le · Q^1.82 · D^-4.82  (dP en mbar, Le en m, Q en m³/h, D en mm)'],
-      ['Velocidad', 'V = 354 · Q / (P abs · D²)  (V en m/s, P absoluta al final del tramo en bar, D en mm)'],
-      ['Longitud equivalente', `Le = L × ${fmt(p.factorLE, 2)}  (incremento por accesorios)`],
-      ['Presión atmosférica', 'Patm = 1013.25 · (1 - 2.25577e-5 · h)^5.25588  (atmósfera estándar ISA, h en m)'],
-      ['Criterios de aceptación', `Presión final >= ${crit.pmin} mbar · Velocidad <= ${crit.vmax} m/s · Pérdida por tramo <= ${crit.maxLossPct} % de la presión de entrada`],
-      ['Referencias', 'NTC 2505 · NTC 3838 · Resolución 90902 de 2013 (RETIGAS) · Método de Renouard']
-    ];
-    doc.autoTable({
-      startY: y, margin: { left: M, right: M, top: 22, bottom: 16 }, body: formulas.map(([a, b]) => [T(a), T(b)]), theme: 'plain',
-      styles: { fontSize: 7.8, cellPadding: { top: 1.3, bottom: 1.3, left: 2, right: 2 }, textColor: C.ink },
-      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 45, textColor: C.ink2 }, 1: { font: 'courier', fontSize: 7.8 } },
-      alternateRowStyles: { fillColor: C.wash },
-      didDrawPage: (h) => { if (h.pageNumber > 1) headerSmall(); }
-    });
-    y = doc.lastAutoTable.finalY + 8;
+    drawChart(d.specs.profile, M, y, cw, ch, 'Presión en cada nodo', 'Desde la fuente hasta el punto más desfavorable');
+    drawChart(d.specs.vel, M + cw + 6, y, cw, ch, 'Velocidad por tramo', 'Rojo: supera el límite · ámbar: >= 80 % del límite');
+    y += ch + 8;
 
     // Firma
-    ensure(46);
+    if (y + 40 > H - 14) { doc.addPage(); headerSmall(); y = 24; }
     const sigW = 76, sx = W - M - sigW;
     if (B && B.logo) doc.addImage(B.logo, 'PNG', M, y, 30, 31.8, 'logo', 'FAST');
     doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...C.ink); doc.text('TODO GAS SYR S.A.S.', M + 35, y + 9);

@@ -17,7 +17,7 @@
   const DEFAULT_STATE = () => ({
     v: 2, mode: 'baja', city: String(defaultCity), altitude: E.CITIES[defaultCity].alt,
     patm: +E.patmFromAltitude(E.CITIES[defaultCity].alt).toFixed(1), gas: 'GN', G: 0.67, factorLE: 1.2,
-    client: {}, baja: blankMode('baja'), media: blankMode('media'), demand: 100
+    client: {}, baja: blankMode('baja'), media: blankMode('media')
   });
   let state = load() || DEFAULT_STATE();
   let seq = 1;
@@ -106,7 +106,6 @@
     $('#pi').value = m.pi; $('#pmin').value = m.pmin; $('#vmax').value = m.vmax; $('#maxLoss').value = m.maxLossPct;
     $('#piHint').textContent = state.mode === 'baja' ? 'Típico residencial: 21–23 mbar (GN) · 28–37 mbar (GLP)' : 'Salida del regulador de primera etapa (100–5000 mbar)';
     $$('[data-client]').forEach((el) => { el.value = state.client[el.dataset.client] || ''; });
-    $('#demand').value = state.demand;
   }
   function bindParams() {
     $('#city').addEventListener('change', (e) => {
@@ -137,7 +136,6 @@
     $('#factorLE').addEventListener('input', (e) => { state.factorLE = e.target.value; changed(); });
     [['pi', 'pi'], ['pmin', 'pmin'], ['vmax', 'vmax'], ['maxLoss', 'maxLossPct']].forEach(([id, key]) => $('#' + id).addEventListener('input', (e) => { M()[key] = e.target.value; changed(); }));
     $$('[data-client]').forEach((el) => el.addEventListener('input', () => { state.client[el.dataset.client] = el.value; persist(); }));
-    $('#demand').addEventListener('input', (e) => { state.demand = +e.target.value; persist(); scheduleSim(); });
   }
 
   /* ============================== MODO ============================== */
@@ -234,6 +232,17 @@
         s.dn = el.value; ensureDn(s); row.querySelector('[data-f="di"]').value = s.di; changed();
       }
     });
+    // Enter: siguiente campo; en la longitud del último tramo crea automáticamente el siguiente.
+    body.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' || !e.target.matches('input')) return;
+      e.preventDefault();
+      const row = e.target.closest('.seg-row'), i = +row.dataset.i;
+      const fields = $$('input:not([readonly]), select:not([disabled])', row);
+      const k = fields.indexOf(e.target);
+      if (e.target.dataset.f === 'l' && i === M().segs.length - 1) { $('#addBtn').click(); return; }
+      const next = fields[k + 1] || $(`#q${i + 1}`);
+      if (next) next.focus();
+    });
     body.addEventListener('click', (e) => {
       const btn = e.target.closest('button'); if (!btn) return;
       const i = +btn.closest('.seg-row').dataset.i;
@@ -283,23 +292,12 @@
   }
 
   /* ============================== CÁLCULO ============================== */
-  let calcRaf = 0, simRaf = 0, last = null;
+  let calcRaf = 0, last = null;
   function changed() { persist(); cancelAnimationFrame(calcRaf); calcRaf = requestAnimationFrame(recalc); }
-  function scheduleSim() { cancelAnimationFrame(simRaf); simRaf = requestAnimationFrame(renderSim); }
 
   function compute() {
     const p = params();
-    const segs = M().segs;
-    const res = E.calcNetwork(segs, p);
-    const preds = E.tramoPredictions(res, p);
-    const hasNet = res.summary.complete;
-    const net = {
-      growth: hasNet && res.summary.ok ? E.maxDemandFactor(segs, p) : NaN,
-      supply: hasNet ? E.minSupplyPressure(segs, p) : NaN,
-      curve: hasNet ? E.demandCurve(segs, p, 0.25, 2.5, 45) : []
-    };
-    if (hasNet && !res.summary.ok) net.growth = E.maxDemandFactor(segs, p); // < 1 si hoy ya falla
-    return { p, res, preds, net };
+    return { p, res: E.calcNetwork(M().segs, p) };
   }
 
   function recalc() {
@@ -308,18 +306,15 @@
     renderHero(res);
     renderRowChips(res);
     renderNotices(res);
-    renderResults(res, last.preds);
-    renderPredictions(last);
+    renderResults(res);
     renderCharts(last);
-    renderReco(last);
-    renderSim();
   }
 
   const usage = (v, lim) => (lim > 0 ? v / lim : 0);
   const tone = (u) => (u > 1 + 1e-9 ? 'bad' : u >= 0.8 ? 'warn' : 'ok');
 
   function renderHero(res) {
-    const s = res.summary, u = state.mode === 'baja' ? 'mbar' : 'mbar';
+    const s = res.summary;
     const hero = $('#heroStatus');
     hero.classList.remove('ok', 'bad');
     const use = hero.querySelector('use');
@@ -328,8 +323,8 @@
     else if (s.ok) { hero.classList.add('ok'); $('#heroValue').textContent = 'APROBADO'; $('#heroSub').textContent = `Los ${s.total} tramos cumplen los criterios`; use.setAttribute('href', '#i-check'); }
     else { hero.classList.add('bad'); $('#heroValue').textContent = 'RECHAZADO'; $('#heroSub').textContent = `${s.total - s.approved} de ${s.total} tramos no cumplen`; use.setAttribute('href', '#i-x'); }
     const c = last.p.crit;
-    $('#kPf').innerHTML = Number.isFinite(s.pfMin) ? `${fmt(s.pfMin, 2)}<em>${u}</em>` : '—';
-    $('#kPfNode').textContent = Number.isFinite(s.pfMin) ? `Nodo crítico ${s.criticalNode}${c.pmin > 0 ? ` · mín. ${c.pmin}` : ''}` : 'nodo crítico';
+    $('#kPf').innerHTML = Number.isFinite(s.pfMin) ? `${fmt(s.pfMin, 2)}<em>mbar</em>` : '—';
+    $('#kPfNode').textContent = Number.isFinite(s.pfMin) ? `Nodo ${s.criticalNode}${c.pmin > 0 ? ` · mín. ${c.pmin}` : ''}` : 'punto más lejano';
     $('#kPf').parentElement.className = 'kpi ' + (Number.isFinite(s.pfMin) && s.pfMin < c.pmin ? 'bad' : 'ok');
     $('#kDrop').innerHTML = Number.isFinite(s.totalLoss) ? `${fmt(s.totalLoss, 2)}<em>mbar</em>` : '—';
     $('#kDropPct').textContent = Number.isFinite(s.totalLossPct) ? `${fmt(s.totalLossPct, 1)} % de la presión de suministro` : '—';
@@ -337,12 +332,21 @@
     $('#kVelLim').textContent = `Límite ${c.vmax} m/s`;
     $('#kVel').parentElement.className = 'kpi ' + (s.vMax > c.vmax ? 'bad' : 'ok');
     $('#kOk').textContent = s.total ? `${s.approved} / ${s.total}` : '—';
-    $('#kQ').textContent = s.total ? `Q fuente ${fmt(s.qSource, 2)} m³/h` : '—';
+    $('#kQ').textContent = s.total ? `Caudal total ${fmt(s.qSource, 2)} m³/h` : '—';
   }
 
-  function statusChip(r) {
+  /** Motivo corto del rechazo de un tramo. */
+  function why(r) {
+    const out = [];
+    if (!r.checks.pmin) out.push('presión baja');
+    if (!r.checks.vel) out.push('velocidad alta');
+    if (!r.checks.loss) out.push('pérdida alta');
+    return out.join(' · ');
+  }
+  function statusChip(r, withWhy = false) {
     if (!r.valid) return `<span class="st idle">${icon('info')}Falta ${esc(r.reason || 'dato').toLowerCase()}</span>`;
-    return r.ok ? `<span class="st ok">${icon('check')}Aprobado</span>` : `<span class="st bad">${icon('x')}Rechazado</span>`;
+    if (r.ok) return `<span class="st ok">${icon('check')}Aprobado</span>`;
+    return `<span class="st bad" title="${esc(why(r))}">${icon('x')}Rechazado${withWhy ? ': ' + esc(why(r)) : ''}</span>`;
   }
   function renderRowChips(res) {
     $$('#segBody .seg-row').forEach((row) => {
@@ -351,7 +355,7 @@
       row.classList.toggle('ok', !!(r.valid && r.ok)); row.classList.toggle('bad', !!(r.valid && !r.ok));
       const chip = row.querySelector('.res-chip');
       chip.innerHTML = r.valid
-        ? `${statusChip(r)}<span>Pf <b>${fmt(r.pf, 2)}</b></span><span>V <b>${fmt(r.v, 2)}</b></span>`
+        ? `${statusChip(r, true)}<span>Pf <b>${fmt(r.pf, 2)}</b></span><span>V <b>${fmt(r.v, 2)}</b></span>`
         : statusChip(r);
     });
   }
@@ -366,158 +370,61 @@
 
   /* ---------- Tabla de resultados ---------- */
   const COLS = {
-    baja: [['Tramo', ''], ['Q', 'm³/h'], ['L', 'm'], ['Le', 'm'], ['Material', ''], ['Ø', 'nominal'], ['D int', 'mm'], ['Pi', 'mbar'], ['ΔP', 'mbar'], ['Pf', 'mbar'], ['ΔP', '%'], ['V', 'm/s'], ['Estado', ''], ['Ø sugerido', 'predicción'], ['Q máx', 'm³/h']],
-    media: [['Tramo', ''], ['Q', 'm³/h'], ['L', 'm'], ['Le', 'm'], ['Material', ''], ['Ø', 'nominal'], ['D int', 'mm'], ['P1', 'mbar'], ['P1 abs', 'mbar'], ['P2 abs', 'mbar'], ['P2', 'mbar'], ['P2', 'psi'], ['ΔP man', '%'], ['ΔP abs', '%'], ['V', 'm/s'], ['Estado', ''], ['Ø sugerido', 'predicción'], ['Q máx', 'm³/h']]
+    baja: [['Tramo', ''], ['Q', 'm³/h'], ['L', 'm'], ['Le', 'm'], ['Material', ''], ['Diámetro', ''], ['D int', 'mm'], ['Pi', 'mbar'], ['ΔP', 'mbar'], ['Pf', 'mbar'], ['ΔP', '%'], ['V', 'm/s'], ['Estado', '']],
+    media: [['Tramo', ''], ['Q', 'm³/h'], ['L', 'm'], ['Le', 'm'], ['Material', ''], ['Diámetro', ''], ['D int', 'mm'], ['P1', 'mbar'], ['P1 abs', 'mbar'], ['P2 abs', 'mbar'], ['P2', 'mbar'], ['P2', 'psi'], ['ΔP', '%'], ['V', 'm/s'], ['Estado', '']]
   };
-  const matShort = (m) => ({ PEALPE: 'PE-AL-PE', PE100: 'PE100', PE80: 'PE80', ACERO: 'Acero', GALV: 'Galv.', COBRE: 'Cobre L', CUSTOM: 'Manual' }[m] || m);
+  const matShort = (m) => ({ PEALPE: 'PE-AL-PE', PE100: 'PE100 IPS', PE100M: 'PE100', PE80: 'PE80', ACERO: 'Acero', GALV: 'Galvanizado', COBRE: 'Cobre L', CUSTOM: 'Manual' }[m] || m);
   const dnLabel = (r) => { const p = E.getPipe(r.mat, r.dn); return p ? p.label : r.mat === 'CUSTOM' ? '—' : (r.dn || '—'); };
-  function suggestionText(r, pr) {
-    if (!r.valid || !pr) return { txt: '—', cls: 'muted' };
-    if (r.mat === 'CUSTOM' || !E.PIPES[r.mat].sizes.length) return Number.isFinite(pr.dMin) ? { txt: `≥ ${fmt(pr.dMin, 1)} mm`, cls: 'pred' } : { txt: 'No posible', cls: 'c-bad' };
-    if (!pr.suggested) return { txt: 'Fuera de catálogo', cls: 'c-bad' };
-    if (pr.suggested.dn === r.dn) return { txt: '✓ Actual', cls: 'c-ok' };
-    const cur = E.getPipe(r.mat, r.dn);
-    const up = !cur || pr.suggested.di > cur.di;
-    return { txt: `${up ? '▲' : '▼'} ${pr.suggested.label}`, cls: up ? 'pred' : 'muted' };
-  }
-  function resultRows(res, preds) {
+  function resultRows(res) {
     const c = last.p.crit, media = res.mode === 'media';
-    return res.rows.map((r, i) => {
-      const pr = preds[i];
+    return res.rows.map((r) => {
       if (!r.valid) return { r, cells: null };
       const vT = tone(usage(r.v, c.vmax)), lT = tone(usage(r.lossPct, c.maxLossPct));
       const pT = r.pf < c.pmin || r.pf <= 0 ? 'bad' : 'ok';
-      const sg = suggestionText(r, pr);
-      const common = [
-        [`${r.ini}-${r.fin}`, ''], [fmt(r.q, 2), ''], [fmt(r.l, 2), ''], [fmt(r.le, 2), ''], [matShort(r.mat), ''], [dnLabel(r), ''], [fmt(r.d, 1), '']
-      ];
+      const common = [[`${r.ini}-${r.fin}`, ''], [fmt(r.q, 2), ''], [fmt(r.l, 2), ''], [fmt(r.le, 2), ''], [matShort(r.mat), ''], [dnLabel(r), ''], [fmt(r.d, 1), '']];
       const mid = media
-        ? [[fmt(r.pi, 2), ''], [fmt(r.p1Abs, 1), ''], [fmt(r.p2Abs, 1), ''], [fmt(r.pf, 2), 'c-' + pT], [fmt(r.psi, 3), ''], [fmt(r.lossPct, 2), 'c-' + lT], [fmt(r.lossAbsPct, 2), ''], [fmt(r.v, 2), 'c-' + vT]]
+        ? [[fmt(r.pi, 2), ''], [fmt(r.p1Abs, 1), ''], [fmt(r.p2Abs, 1), ''], [fmt(r.pf, 2), 'c-' + pT], [fmt(r.psi, 3), ''], [fmt(r.lossPct, 2), 'c-' + lT], [fmt(r.v, 2), 'c-' + vT]]
         : [[fmt(r.pi, 3), ''], [fmt(r.dp, 3), ''], [fmt(r.pf, 3), 'c-' + pT], [fmt(r.lossPct, 2), 'c-' + lT], [fmt(r.v, 2), 'c-' + vT]];
-      return { r, pr, sg, cells: [...common, ...mid, ['__status__', ''], [sg.txt, sg.cls], [fmt(pr && pr.qMax, 2), 'pred']] };
+      return { r, cells: [...common, ...mid, ['__status__', '']] };
     });
   }
-  function renderResults(res, preds) {
+  function renderResults(res) {
     const cols = COLS[res.mode];
     $('#resHead').innerHTML = '<tr>' + cols.map(([a, b]) => `<th>${esc(a)}${b ? `<i>${esc(b)}</i>` : ''}</th>`).join('') + '</tr>';
     if (!res.rows.length) { $('#resBody').innerHTML = `<tr><td colspan="${cols.length}" class="muted" style="padding:22px">Sin tramos calculados</td></tr>`; return; }
-    $('#resBody').innerHTML = resultRows(res, preds).map(({ r, cells }) => {
+    $('#resBody').innerHTML = resultRows(res).map(({ r, cells }) => {
       if (!cells) return `<tr><td>${esc(r.ini)}-${esc(r.fin)}</td><td colspan="${cols.length - 1}" class="muted" style="text-align:left">${statusChip(r)}</td></tr>`;
       return '<tr>' + cells.map(([v, cls]) => (v === '__status__' ? `<td>${statusChip(r)}</td>` : `<td class="${cls}">${esc(v)}</td>`)).join('') + '</tr>';
     }).join('');
   }
 
-  /* ---------- Predicciones ---------- */
-  function renderPredictions({ res, net, p }) {
-    const s = res.summary;
-    const g = net.growth;
-    $('#pGrowth').textContent = !s.complete ? '—' : !Number.isFinite(g) ? 'Rechaza hoy' : g >= 20 ? '> +1900 %' : `${g >= 1 ? '+' : ''}${fmt((g - 1) * 100, 0)} %`;
-    $('#pGrowth').closest('.pred-tile').querySelector('small').textContent = !s.complete ? 'complete los tramos' : g >= 1 ? `hasta ${fmt(s.qSource * g, 2)} m³/h en la fuente` : 'la red ya no cumple con la demanda actual';
-    $('#pSupply').textContent = Number.isFinite(net.supply) ? `${fmt(net.supply, 2)} mbar` : s.complete ? 'No alcanzable' : '—';
-    $('#pSupply').closest('.pred-tile').querySelector('small').textContent = Number.isFinite(net.supply) ? `actual ${fmt(p.pi, 1)} mbar · margen ${fmt(p.pi - net.supply, 2)} mbar` : s.complete ? 'ninguna presión admisible cumple (revise V o Ø)' : 'para aprobar toda la red';
-    $('#pQ').textContent = s.total ? `${fmt(s.qSource, 2)} m³/h` : '—';
-    const pcs = (E.GASES[state.gas] || E.GASES.GN).pcs;
-    $('#pQpow').textContent = s.total ? `≈ ${fmt(s.qSource * pcs, 1)} kW · ${fmt(s.qSource * pcs / 0.29307107, 1)} kBTU/h` : '—';
-    $('#pL').textContent = s.total ? `${fmt(s.lengthTotal, 2)} m` : '—';
-    $('#pLe').textContent = s.total ? `Longitud equivalente ${fmt(s.lengthTotal * p.factorLE, 2)} m` : '—';
-  }
-  function renderSim() {
-    if (!last) return;
-    const k = state.demand / 100;
-    $('#demandOut').textContent = state.demand + ' %';
-    const g = last.net.growth;
-    const range = $('#demand');
-    const okPct = Number.isFinite(g) ? Math.max(0, Math.min(100, (g * 100 - 25) / (250 - 25) * 100)) : 0;
-    range.style.setProperty('--okpct', okPct + '%');
-    if (!last.res.summary.complete) { $('#demandRes').innerHTML = 'Complete los datos de todos los tramos para simular.'; return; }
-    const r = E.calcNetwork(M().segs, params({ demand: k })).summary;
-    $('#demandRes').innerHTML = `Con el <b>${state.demand} %</b> de la demanda (Q fuente <b>${fmt(r.qSource, 2)} m³/h</b>): presión mínima <b>${fmt(r.pfMin, 2)} mbar</b> en el nodo ${esc(r.criticalNode)}, velocidad máxima <b>${fmt(r.vMax, 2)} m/s</b> → ` +
-      (r.ok ? `<span class="st ok">${icon('check')}Aprobado</span>` : `<span class="st bad">${icon('x')}Rechazado (${r.total - r.approved} tramo${r.total - r.approved === 1 ? '' : 's'})</span>`);
-  }
-
   /* ---------- Gráficas ---------- */
   let views = null;
-  function chartSpecs({ res, net, p }) {
+  function chartSpecs({ res, p }) {
     const valid = res.rows.filter((r) => r.valid);
     if (!valid.length) {
       const empty = { empty: true, emptyText: 'Agregue tramos con caudal, longitud y diámetro' };
-      return { profile: empty, vel: empty, curve: empty };
+      return { profile: empty, vel: empty };
     }
     const path = res.path.map((i) => res.rows[i]);
     const first = path[0];
-    const points = [{ x: 0, y: first.pi, label: first.ini, tip: `<b>Nodo ${esc(first.ini)} (fuente)</b>${fmt(first.pi, 2)} mbar` }]
-      .concat(path.map((r) => ({ x: r.dist, y: r.pf, label: r.fin, bad: !r.ok, tip: `<b>Nodo ${esc(r.fin)}</b>P = ${fmt(r.pf, 2)} mbar<br>Distancia eq. ${fmt(r.dist, 1)} m<br>Tramo ${esc(r.ini)}-${esc(r.fin)}: ΔP ${fmt(r.dp, 3)} mbar` })));
+    const points = [{ x: 0, y: first.pi, label: first.ini, tip: `<b>Nodo ${esc(first.ini)} (inicio)</b>${fmt(first.pi, 2)} mbar` }]
+      .concat(path.map((r) => ({ x: r.dist, y: r.pf, label: r.fin, bad: !r.ok, tip: `<b>Nodo ${esc(r.fin)}</b>P = ${fmt(r.pf, 2)} mbar<br>Distancia ${fmt(r.dist, 1)} m · ΔP ${fmt(r.dp, 3)} mbar` })));
     const profile = {
       kind: 'line', points, xLabel: 'Distancia equivalente (m)', yLabel: 'Presión (mbar)', color: null,
       refs: p.crit.pmin > 0 ? [{ y: p.crit.pmin, label: `Mínima ${p.crit.pmin} mbar` }] : []
     };
     const vel = {
       kind: 'bars', yLabel: 'Velocidad (m/s)', valueLabels: true,
-      bars: valid.map((r) => ({ label: `${r.ini}-${r.fin}`, value: r.v, status: tone(usage(r.v, p.crit.vmax)), tip: `<b>Tramo ${esc(r.ini)}-${esc(r.fin)}</b>V = ${fmt(r.v, 2)} m/s (${fmt(r.v / p.crit.vmax * 100, 0)} % del límite)<br>Q ${fmt(r.q, 2)} m³/h · D ${fmt(r.d, 1)} mm` })),
+      bars: valid.map((r) => ({ label: `${r.ini}-${r.fin}`, value: r.v, status: tone(usage(r.v, p.crit.vmax)), tip: `<b>Tramo ${esc(r.ini)}-${esc(r.fin)}</b>V = ${fmt(r.v, 2)} m/s<br>Q ${fmt(r.q, 2)} m³/h · D ${fmt(r.d, 1)} mm` })),
       refs: [{ y: p.crit.vmax, label: `Límite ${p.crit.vmax} m/s` }]
     };
-    let curve = { empty: true, emptyText: 'Complete todos los tramos para ver la predicción' };
-    if (net.curve.length) {
-      const g = net.growth;
-      curve = {
-        kind: 'line', xTight: true, markers: false, xFmt: (x) => x.toFixed(0) + ' %', xLabel: 'Demanda respecto a la actual (%)', yLabel: 'Presión mínima (mbar)',
-        points: net.curve.filter((c) => Number.isFinite(c.pfMin)).map((c) => ({ x: c.factor * 100, y: c.pfMin, bad: !c.ok, tip: `<b>${fmt(c.factor * 100, 0)} % de la demanda</b>P mín. ${fmt(c.pfMin, 2)} mbar<br>V máx. ${fmt(c.vMax, 2)} m/s · ${c.ok ? 'Aprobado' : 'Rechazado'}` })),
-        refs: p.crit.pmin > 0 ? [{ y: p.crit.pmin, label: `Mínima ${p.crit.pmin} mbar` }] : [],
-        vmarks: [{ x: 100, label: 'Actual' }].concat(Number.isFinite(g) && g * 100 <= 250 ? [{ x: g * 100, label: `Límite ${fmt(g * 100, 0)} %`, color: null }] : []),
-        bands: Number.isFinite(g) ? [{ from: g * 100, to: 250, color: '#b4232f' }] : [{ from: 25, to: 250, color: '#b4232f' }]
-      };
-    }
-    return { profile, vel, curve };
+    return { profile, vel };
   }
   function renderCharts(data) {
-    if (!views) views = { profile: new Charts.ChartView($('#chProfile')), vel: new Charts.ChartView($('#chVel')), curve: new Charts.ChartView($('#chCurve')) };
+    if (!views) views = { profile: new Charts.ChartView($('#chProfile')), vel: new Charts.ChartView($('#chVel')) };
     const sp = chartSpecs(data);
-    views.profile.set(sp.profile); views.vel.set(sp.vel); views.curve.set(sp.curve);
-  }
-
-  /* ---------- Recomendaciones ---------- */
-  function recommendations({ res, preds, net, p }) {
-    const out = [];
-    const s = res.summary;
-    if (!s.total) return [{ k: 'info', t: 'Agregue los tramos de la red: nodo inicio, nodo fin, caudal, longitud, material y diámetro.' }];
-    res.errors.forEach((t) => out.push({ k: 'bad', t }));
-    if (state.mode === 'baja' && p.pi > 100) out.push({ k: 'warn', t: `La presión de suministro (${p.pi} mbar) supera 100 mbar: use el cálculo de media presión.` });
-    if (state.mode === 'media' && p.pi < 100) out.push({ k: 'info', t: `La presión de suministro (${p.pi} mbar) es de baja presión; considere el régimen de baja presión.` });
-    res.rows.forEach((r, i) => {
-      if (!r.valid || r.ok) return;
-      const why = [];
-      if (!r.checks.pmin) why.push(`presión final ${fmt(r.pf, 2)} mbar < ${p.crit.pmin} mbar`);
-      if (!r.checks.vel) why.push(`velocidad ${fmt(r.v, 2)} m/s > ${p.crit.vmax} m/s`);
-      if (!r.checks.loss) why.push(`pérdida ${fmt(r.lossPct, 1)} % > ${p.crit.maxLossPct} %`);
-      const pr = preds[i];
-      const fix = pr && pr.suggested && pr.suggested.dn !== r.dn ? { i, dn: pr.suggested.dn, label: pr.suggested.label } : null;
-      out.push({ k: 'bad', t: `Tramo ${r.ini}-${r.fin}: ${why.join(', ')}.` + (fix ? ` Use ${fix.label} (D int ${fmt(pr.suggested.di, 1)} mm).` : pr && Number.isFinite(pr.qMax) ? ` Caudal máximo admisible con el diámetro actual: ${fmt(pr.qMax, 2)} m³/h.` : ''), fix });
-    });
-    if (s.complete && s.ok) {
-      out.unshift({ k: 'ok', t: `Red aprobada. Presión mínima ${fmt(s.pfMin, 2)} mbar en el nodo ${s.criticalNode}; admite un aumento de demanda de hasta ${Number.isFinite(net.growth) ? (net.growth >= 20 ? 'más de 1900' : fmt((net.growth - 1) * 100, 0)) : '—'} %.` });
-      res.rows.forEach((r, i) => {
-        const pr = preds[i]; if (!r.valid || !pr) return;
-        if (pr.vUse >= 80) out.push({ k: 'warn', t: `Tramo ${r.ini}-${r.fin}: la velocidad usa el ${fmt(pr.vUse, 0)} % del límite; poca reserva para ampliaciones.` });
-        const cur = E.getPipe(r.mat, r.dn);
-        if (pr.suggested && cur && pr.suggested.di < cur.di) out.push({ k: 'info', t: `Tramo ${r.ini}-${r.fin}: cumpliría también con ${pr.suggested.label} (optimización de costo; verifique ampliaciones futuras).`, fix: { i, dn: pr.suggested.dn, label: pr.suggested.label } });
-      });
-    }
-    if (s.complete && Number.isFinite(net.supply) && net.supply > p.pi) out.push({ k: 'warn', t: `Se requiere al menos ${fmt(net.supply, 2)} mbar de presión de suministro con los diámetros actuales.` });
-    res.warnings.forEach((t) => out.push({ k: 'warn', t }));
-    if (!s.complete && !res.errors.length) out.push({ k: 'info', t: `Complete los datos de ${s.total - s.calculated} tramo(s) para el cálculo completo.` });
-    return out;
-  }
-  function renderReco(data) {
-    last.recos = recommendations(data);
-    const ic = { ok: 'check', bad: 'x', warn: 'alert', info: 'info' };
-    $('#reco').innerHTML = last.recos.map((x, n) => `<li class="${x.k}">${icon(ic[x.k])}<span>${esc(x.t)}</span>${x.fix ? `<button class="chip-btn" type="button" data-fix="${n}">${icon('wand')}Aplicar</button>` : ''}</li>`).join('');
-  }
-  function bindReco() {
-    $('#reco').addEventListener('click', (e) => {
-      const b = e.target.closest('[data-fix]'); if (!b) return;
-      const fix = last.recos[+b.dataset.fix].fix; const s = M().segs[fix.i]; if (!s) return;
-      s.dn = fix.dn; ensureDn(s); renderSegments(); changed(); toast(`Tramo ${s.ini}-${s.fin} → ${fix.label}`, 'ok');
-    });
+    views.profile.set(sp.profile); views.vel.set(sp.vel);
   }
 
   function autoSizeAction() {
@@ -587,8 +494,8 @@
     return {
       mode: state.mode, client: { ...state.client }, date: dateStr(), dateISO: new Date().toISOString(),
       params: { ...data.p, gasLabel: (E.GASES[state.gas] || {}).label || 'Gas', city: city ? `${city.name} (${city.dept})` : 'Personalizado', altitude: E.num(state.altitude, NaN) },
-      res: data.res, preds: data.preds, net: data.net, recos: recommendations(data), specs: chartSpecs(data),
-      table: { cols: COLS[data.res.mode], rows: resultRows(data.res, data.preds) }, pipes: E.PIPES
+      res: data.res, specs: chartSpecs(data),
+      table: { cols: COLS[data.res.mode], rows: resultRows(data.res) }
     };
   }
   async function buildPDF() {
@@ -633,24 +540,23 @@
     L.push('');
     const media = d.mode === 'media';
     const head = media
-      ? ['Tramo', 'Inicio', 'Fin', 'Q (m3/h)', 'L (m)', 'Le (m)', 'Material', 'Diámetro', 'D int (mm)', 'P1 (mbar)', 'P1 abs (mbar)', 'P2 abs (mbar)', 'P2 (mbar)', 'P2 (psi)', 'Pérdida man (%)', 'Pérdida abs (%)', 'V (m/s)', 'Estado', 'Ø sugerido', 'Q máx (m3/h)']
-      : ['Tramo', 'Inicio', 'Fin', 'Q (m3/h)', 'L (m)', 'Le (m)', 'Material', 'Diámetro', 'D int (mm)', 'Pi (mbar)', 'Pérdida (mbar)', 'Pf (mbar)', 'Pérdida (%)', 'V (m/s)', 'Estado', 'Ø sugerido', 'Q máx (m3/h)'];
+      ? ['Tramo', 'Inicio', 'Fin', 'Q (m3/h)', 'L (m)', 'Le (m)', 'Material', 'Diámetro', 'D int (mm)', 'P1 (mbar)', 'P1 abs (mbar)', 'P2 abs (mbar)', 'P2 (mbar)', 'P2 (psi)', 'Pérdida (%)', 'V (m/s)', 'Estado']
+      : ['Tramo', 'Inicio', 'Fin', 'Q (m3/h)', 'L (m)', 'Le (m)', 'Material', 'Diámetro', 'D int (mm)', 'Pi (mbar)', 'Pérdida (mbar)', 'Pf (mbar)', 'Pérdida (%)', 'V (m/s)', 'Estado'];
     L.push(head.map(q).join(';'));
-    d.table.rows.forEach(({ r, pr, sg }, i) => {
+    d.table.rows.forEach(({ r }, i) => {
       const mat = (E.PIPES[r.mat] || {}).label || r.mat;
       const dn = (E.getPipe(r.mat, r.dn) || {}).label || '';
       const base = [i + 1, r.ini, r.fin, n(r.q, 3), n(r.l, 2), n(r.le, 2), mat, dn, n(r.d, 1)];
       if (!r.valid) { L.push([...base, `Datos incompletos: ${r.reason}`].map(q).join(';')); return; }
-      const est = r.ok ? 'APROBADO' : 'RECHAZADO';
-      const tail = [est, sg ? sg.txt.replace(/[▲▼✓]\s?/g, '') : '', n(pr && pr.qMax, 3)];
+      const tail = [r.ok ? 'APROBADO' : 'RECHAZADO'];
       L.push((media
-        ? [...base, n(r.pi, 2), n(r.p1Abs, 1), n(r.p2Abs, 1), n(r.pf, 2), n(r.psi, 3), n(r.lossPct, 2), n(r.lossAbsPct, 2), n(r.v, 2), ...tail]
+        ? [...base, n(r.pi, 2), n(r.p1Abs, 1), n(r.p2Abs, 1), n(r.pf, 2), n(r.psi, 3), n(r.lossPct, 2), n(r.v, 2), ...tail]
         : [...base, n(r.pi, 3), n(r.dp, 3), n(r.pf, 3), n(r.lossPct, 2), n(r.v, 2), ...tail]).map(q).join(';'));
     });
     L.push('');
     const s = d.res.summary;
     L.push(['Resultado global', s.ok ? 'APROBADO' : s.complete ? 'RECHAZADO' : 'INCOMPLETO', 'Presión mínima (mbar)', n(s.pfMin, 3), 'Nodo crítico', s.criticalNode].map(q).join(';'));
-    L.push(['Velocidad máxima (m/s)', n(s.vMax, 2), 'Crecimiento de demanda admisible (%)', Number.isFinite(d.net.growth) ? n((d.net.growth - 1) * 100, 1) : '', 'Presión mínima de suministro (mbar)', n(d.net.supply, 2)].map(q).join(';'));
+    L.push(['Velocidad máxima (m/s)', n(s.vMax, 2), 'Caída total (mbar)', n(s.totalLoss, 3), 'Caudal total (m3/h)', n(s.qSource, 3)].map(q).join(';'));
     download(new Blob(['﻿' + L.join('\r\n')], { type: 'text/csv;charset=utf-8' }), fileBase() + '.csv');
     toast('Archivo CSV listo para Excel', 'ok');
   }
@@ -702,7 +608,7 @@
   /* ============================== INICIO ============================== */
   fillSelects();
   if (!state.client.city && state.city !== 'custom' && E.CITIES[+state.city]) state.client.city = E.CITIES[+state.city].name;
-  bindParams(); bindSegments(); bindReco(); bindExport(); bindChrome();
+  bindParams(); bindSegments(); bindExport(); bindChrome();
   setMode(state.mode);
   window.TGS = { get state() { return state; }, recalc, compute, reportData };
 })();

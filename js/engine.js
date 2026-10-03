@@ -49,6 +49,20 @@
         { dn: '4', label: '4" IPS', de: 114.3, di: 93.5 }
       ]
     },
+    PE100M: {
+      label: 'Polietileno PE100 métrico SDR 11',
+      norma: 'ISO 4437 / NTC 1746',
+      sizes: [
+        { dn: '20', label: 'Ø20 mm SDR11', de: 20, di: 14.0 },
+        { dn: '25', label: 'Ø25 mm SDR11', de: 25, di: 19.0 },
+        { dn: '32', label: 'Ø32 mm SDR11', de: 32, di: 26.0 },
+        { dn: '40', label: 'Ø40 mm SDR11', de: 40, di: 32.6 },
+        { dn: '50', label: 'Ø50 mm SDR11', de: 50, di: 40.8 },
+        { dn: '63', label: 'Ø63 mm SDR11', de: 63, di: 51.4 },
+        { dn: '90', label: 'Ø90 mm SDR11', de: 90, di: 73.6 },
+        { dn: '110', label: 'Ø110 mm SDR11', de: 110, di: 90.0 }
+      ]
+    },
     PE80: {
       label: 'Polietileno PE80',
       norma: 'ASTM D2513',
@@ -123,9 +137,11 @@
   ].map(([name, dept, alt]) => ({ name, dept, alt }));
 
   const GASES = {
-    GN: { label: 'Gas natural', G: 0.67, pcs: 10.35 },   // PCS ≈ 37.3 MJ/m³ ≈ 10.35 kWh/m³
-    GLP: { label: 'GLP (propano comercial)', G: 1.52, pcs: 26.0 }, // PCS ≈ 93.6 MJ/m³ ≈ 26 kWh/m³
-    OTRO: { label: 'Otro (densidad manual)', G: 0.67, pcs: 10.35 }
+    GN: { label: 'Gas natural (GN)', G: 0.67, pcs: 10.35 },          // PCS ≈ 37.3 MJ/m³
+    GLP: { label: 'GLP · propano comercial', G: 1.52, pcs: 26.0 },    // PCS ≈ 93.6 MJ/m³
+    GLPM: { label: 'GLP · mezcla 60/40 propano-butano', G: 1.71, pcs: 29.2 },
+    BUT: { label: 'GLP · butano', G: 2.0, pcs: 34.0 },               // PCS ≈ 122 MJ/m³
+    OTRO: { label: 'Otro gas (densidad manual)', G: 0.67, pcs: 10.35 }
   };
 
   const DEFAULT_CRITERIA = {
@@ -311,66 +327,7 @@
     return { mode, rows, path, summary, errors: topo.errors, warnings, order: topo.order };
   }
 
-  /* ============================== PREDICCIONES ============================== */
-  /** Bisección genérica: mayor x en [lo,hi] con pred(x) verdadero (pred monótona decreciente). */
-  function bisectMax(pred, lo, hi, iters = 60) {
-    if (!pred(lo)) return NaN;
-    if (pred(hi)) return hi;
-    for (let k = 0; k < iters; k++) { const mid = (lo + hi) / 2; if (pred(mid)) lo = mid; else hi = mid; }
-    return lo;
-  }
-  function bisectMin(pred, lo, hi, iters = 60) {
-    if (!pred(hi)) return NaN;
-    if (pred(lo)) return lo;
-    for (let k = 0; k < iters; k++) { const mid = (lo + hi) / 2; if (pred(mid)) hi = mid; else lo = mid; }
-    return hi;
-  }
-
-  /** Para cada tramo válido: caudal máximo admisible, longitud máxima y diámetro comercial mínimo que cumple. */
-  function tramoPredictions(res, p) {
-    const f = tramoFn(res.mode);
-    const crit = p.crit;
-    const fle = num(p.factorLE, 1.2);
-    return res.rows.map((r) => {
-      if (!r.valid) return null;
-      const passes = (q, le, d) => evaluate(f({ q, le, d, pi: r.pi, G: p.G, patm: p.patm }), crit, r.pi).ok;
-      const qMax = bisectMax((q) => passes(q, r.le, r.d), 1e-6, 1e5);
-      const lMax = bisectMax((L) => passes(r.q, L * fle, r.d), 1e-6, 1e6);
-      let suggested = null;
-      const cat = PIPES[r.mat];
-      if (cat && cat.sizes.length) suggested = cat.sizes.find((s) => passes(r.q, r.le, s.di)) || null;
-      const dMin = bisectMin((d) => passes(r.q, r.le, d), 1, 500);
-      return {
-        qMax, lMax, dMin, suggested,
-        qMargin: Number.isFinite(qMax) && r.q > 0 ? (qMax / r.q - 1) * 100 : NaN,
-        vUse: r.v / crit.vmax * 100
-      };
-    });
-  }
-
-  /** Factor de demanda máximo que la red soporta sin rechazos (1 = demanda actual). */
-  function maxDemandFactor(segments, p) {
-    const ok = (k) => calcNetwork(segments, { ...p, demand: k }).summary.ok;
-    return bisectMax(ok, 1e-3, 20, 40);
-  }
-
-  /** Presión mínima de suministro que hace aprobar toda la red. */
-  function minSupplyPressure(segments, p) {
-    const hi = p.mode === 'media' ? 5000 : 100;
-    return bisectMin((pi) => calcNetwork(segments, { ...p, pi }).summary.ok, 0.01, hi, 50);
-  }
-
-  /** Curva de predicción: presión mínima y velocidad máxima frente al % de demanda. */
-  function demandCurve(segments, p, from = 0.25, to = 2, steps = 36) {
-    const out = [];
-    for (let k = 0; k <= steps; k++) {
-      const factor = from + (to - from) * k / steps;
-      const r = calcNetwork(segments, { ...p, demand: factor }).summary;
-      out.push({ factor, pfMin: r.pfMin, vMax: r.vMax, ok: r.ok });
-    }
-    return out;
-  }
-
+  /* ============================== DIMENSIONAMIENTO ============================== */
   /**
    * Dimensionamiento automático: método de pérdida unitaria admisible sobre la ruta más larga
    * que pasa por cada tramo, luego ajuste iterativo aumentando diámetros hasta que toda la red aprueba.
@@ -433,8 +390,7 @@
   const api = {
     K, PIPES, CITIES, GASES, DEFAULT_CRITERIA,
     num, patmFromAltitude, nextNode, nodeIndex, getPipe, segmentDI,
-    lowTramo, mediumTramo, topology, calcNetwork, tramoPredictions,
-    maxDemandFactor, minSupplyPressure, demandCurve, autoSize, flowFromPower
+    lowTramo, mediumTramo, topology, calcNetwork, autoSize, flowFromPower
   };
   root.GasEngine = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

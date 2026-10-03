@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="TODO GAS SYR S.A.S. — Cálculo, predicción y memoria técnica de redes de gas natural y GLP en baja y media presión (Renouard).">
+<meta name="description" content="TODO GAS SYR S.A.S. — Cálculo y memoria técnica de redes de gas natural y GLP en baja y media presión (Renouard).">
 <meta name="theme-color" content="#023047">
 <meta name="color-scheme" content="light dark">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -64,7 +64,7 @@
       <img class="brand-logo" src="assets/flame.png" alt="" width="46" height="54" decoding="async">
       <div class="brand-text">
         <h1>TODO GAS SYR <span>S.A.S.</span></h1>
-        <p>Cálculo y predicción de redes de gas natural y GLP</p>
+        <p>Cálculo de redes de gas natural y GLP</p>
       </div>
     </div>
     <div class="header-actions">
@@ -181,14 +181,14 @@
       <div class="seg-table" id="segTable" role="table" aria-label="Tramos">
         <div class="seg-head" role="row">
           <span>#</span><span>Inicio</span><span>Fin</span><span>Caudal<br><i>m³/h</i></span><span>Longitud<br><i>m</i></span>
-          <span>Material</span><span>Diámetro</span><span>Ø int.<br><i>mm</i></span><span>Resultado</span><span></span>
+          <span>Material</span><span>Diámetro</span><span>Ø int.<br><i>mm</i></span><span>Estado</span><span></span>
         </div>
         <div id="segBody"></div>
       </div>
       <div class="notice" id="netNotice" hidden></div>
       <div class="row-actions">
         <button class="btn btn-primary" id="addBtn" type="button"><svg><use href="#i-plus"/></svg>Agregar tramo</button>
-        <button class="btn btn-ghost" id="autoBtn" type="button"><svg><use href="#i-wand"/></svg>Dimensionar automáticamente</button>
+        <button class="btn btn-ghost" id="autoBtn" type="button"><svg><use href="#i-wand"/></svg>Elegir diámetros automáticamente</button>
         <button class="btn btn-ghost danger" id="clearBtn" type="button"><svg><use href="#i-trash"/></svg>Limpiar</button>
       </div>
     </div>
@@ -208,44 +208,20 @@
     </div>
   </section>
 
-  <!-- PREDICCIONES -->
+  <!-- GRÁFICAS -->
   <section class="card">
-    <h2 class="card-title"><svg><use href="#i-spark"/></svg>Predicciones y análisis</h2>
+    <h2 class="card-title accent"><svg><use href="#i-chart"/></svg>Gráficas</h2>
     <div class="card-body">
-      <div class="pred-grid">
-        <div class="pred-tile"><span>Crecimiento de demanda admisible</span><strong id="pGrowth">—</strong><small>antes del primer rechazo</small></div>
-        <div class="pred-tile"><span>Presión mínima de suministro</span><strong id="pSupply">—</strong><small>para aprobar toda la red</small></div>
-        <div class="pred-tile"><span>Caudal total en la fuente</span><strong id="pQ">—</strong><small id="pQpow">—</small></div>
-        <div class="pred-tile"><span>Longitud total instalada</span><strong id="pL">—</strong><small id="pLe">—</small></div>
-      </div>
-
-      <div class="simulator">
-        <div class="sim-head">
-          <label for="demand"><svg><use href="#i-bolt"/></svg>Simulador de demanda futura</label>
-          <output id="demandOut">100 %</output>
-        </div>
-        <input type="range" id="demand" min="25" max="250" step="5" value="100" aria-describedby="demandRes">
-        <div class="sim-scale"><span>25 %</span><span>100 % (actual)</span><span>250 %</span></div>
-        <p class="sim-result" id="demandRes">—</p>
-      </div>
-
       <div class="charts">
         <figure class="chart-card">
-          <figcaption><b>Perfil de presión</b><span>Ruta crítica desde la fuente (mbar vs. distancia equivalente)</span></figcaption>
-          <div class="chart-box"><canvas id="chProfile" role="img" aria-label="Perfil de presión"></canvas></div>
+          <figcaption><b>Presión en cada nodo</b><span>Recorrido desde la fuente hasta el punto más desfavorable</span></figcaption>
+          <div class="chart-box"><canvas id="chProfile" role="img" aria-label="Presión en cada nodo"></canvas></div>
         </figure>
         <figure class="chart-card">
           <figcaption><b>Velocidad por tramo</b><span>m/s frente al límite admisible</span></figcaption>
           <div class="chart-box"><canvas id="chVel" role="img" aria-label="Velocidad por tramo"></canvas></div>
         </figure>
-        <figure class="chart-card wide">
-          <figcaption><b>Curva de predicción</b><span>Presión mínima en la red según el % de demanda</span></figcaption>
-          <div class="chart-box"><canvas id="chCurve" role="img" aria-label="Curva de predicción"></canvas></div>
-        </figure>
       </div>
-
-      <h3 class="sub-title"><svg><use href="#i-info"/></svg>Recomendaciones automáticas</h3>
-      <ul class="reco" id="reco"></ul>
     </div>
   </section>
 
@@ -253,7 +229,7 @@
   <section class="card export-card">
     <h2 class="card-title"><svg><use href="#i-pdf"/></svg>Exportar y guardar</h2>
     <div class="card-body export-grid">
-      <button class="xbtn x-pdf" id="pdfBtn" type="button"><svg><use href="#i-pdf"/></svg><b>Memoria de cálculo PDF</b><small>Alta calidad · vectorial · con gráficas y firma</small></button>
+      <button class="xbtn x-pdf" id="pdfBtn" type="button"><svg><use href="#i-pdf"/></svg><b>Exportar PDF</b><small>Resultados y gráficas · alta calidad</small></button>
       <button class="xbtn x-share" id="shareBtn" type="button"><svg><use href="#i-share"/></svg><b>Compartir PDF</b><small>WhatsApp, correo, Drive…</small></button>
       <button class="xbtn x-csv" id="csvBtn" type="button"><svg><use href="#i-table"/></svg><b>Excel (CSV)</b><small>Tabla de resultados completa</small></button>
       <button class="xbtn x-save" id="saveBtn" type="button"><svg><use href="#i-save"/></svg><b>Guardar proyecto</b><small>Archivo .json reutilizable</small></button>

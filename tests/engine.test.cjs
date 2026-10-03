@@ -89,19 +89,6 @@ test('Balance de caudales y ciclos', () => {
   assert.ok(cyc.errors.length > 0);
 });
 
-test('Predicciones: Q máx y diámetro sugerido son coherentes', () => {
-  const segs = [{ ini: 'A', fin: 'B', q: 4, l: 15, mat: 'PEALPE', dn: '1216' }];
-  const p = { ...base, mode: 'baja', pi: 23 };
-  const res = E.calcNetwork(segs, p);
-  assert.equal(res.summary.ok, false);
-  const pr = E.tramoPredictions(res, p)[0];
-  // En Q máx el tramo aprueba; un 1 % por encima ya no.
-  assert.ok(E.calcNetwork([{ ...segs[0], q: pr.qMax * 0.999 }], p).summary.ok);
-  assert.ok(!E.calcNetwork([{ ...segs[0], q: pr.qMax * 1.01 }], p).summary.ok);
-  assert.ok(pr.suggested, 'hay diámetro comercial sugerido');
-  assert.ok(E.calcNetwork([{ ...segs[0], dn: pr.suggested.dn }], p).summary.ok);
-});
-
 test('Dimensionamiento automático deja toda la red aprobada', () => {
   const segs = [
     { ini: 'A', fin: 'B', q: 6, l: 12, mat: 'PEALPE', dn: '1216' },
@@ -115,15 +102,8 @@ test('Dimensionamiento automático deja toda la red aprobada', () => {
   assert.ok(E.calcNetwork(out.segments, p).summary.ok);
 });
 
-test('Factor de demanda máximo y presión mínima de suministro', () => {
-  const segs = [{ ini: 'A', fin: 'B', q: 2, l: 10, mat: 'PEALPE', dn: '1620' }];
-  const p = { ...base, mode: 'baja', pi: 23 };
-  const k = E.maxDemandFactor(segs, p);
-  assert.ok(k > 1);
-  assert.ok(E.calcNetwork(segs, { ...p, demand: k * 0.99 }).summary.ok);
-  assert.ok(!E.calcNetwork(segs, { ...p, demand: k * 1.02 }).summary.ok);
-  const pmin = E.minSupplyPressure(segs, p);
-  assert.ok(pmin > 18 && pmin < 23);
+test('Catálogo: todos los diámetros internos son menores que los externos', () => {
+  Object.values(E.PIPES).forEach((m) => m.sizes.forEach((z) => assert.ok(z.di > 0 && z.di < z.de, m.label + ' ' + z.label)));
 });
 
 test('Caudal desde potencia', () => {
