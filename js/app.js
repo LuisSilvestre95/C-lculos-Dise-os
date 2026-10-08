@@ -106,7 +106,10 @@
     $('#pi').value = m.pi; $('#pmin').value = m.pmin; $('#vmax').value = m.vmax; $('#maxLoss').value = m.maxLossPct;
     $('#piHint').textContent = state.mode === 'baja' ? 'Típico residencial: 21–23 mbar (GN) · 28–37 mbar (GLP)' : 'Salida del regulador de primera etapa (100–5000 mbar)';
     $$('[data-client]').forEach((el) => { el.value = state.client[el.dataset.client] || ''; });
+    refPlaceholder();
   }
+  // El campo "Informe" muestra el nombre del cliente mientras no se escriba otro valor.
+  function refPlaceholder() { const n = (state.client.name || '').trim(); $('#cRef').placeholder = n || 'Nombre del cliente'; }
   function bindParams() {
     $('#city').addEventListener('change', (e) => {
       state.city = e.target.value;
@@ -135,7 +138,7 @@
     $('#G').addEventListener('input', (e) => { state.G = e.target.value; const g = E.GASES[state.gas]; if (g && E.num(e.target.value) !== g.G) { state.gas = 'OTRO'; $('#gas').value = 'OTRO'; } changed(); });
     $('#factorLE').addEventListener('input', (e) => { state.factorLE = e.target.value; changed(); });
     [['pi', 'pi'], ['pmin', 'pmin'], ['vmax', 'vmax'], ['maxLoss', 'maxLossPct']].forEach(([id, key]) => $('#' + id).addEventListener('input', (e) => { M()[key] = e.target.value; changed(); }));
-    $$('[data-client]').forEach((el) => el.addEventListener('input', () => { state.client[el.dataset.client] = el.value; persist(); }));
+    $$('[data-client]').forEach((el) => el.addEventListener('input', () => { state.client[el.dataset.client] = el.value; persist(); refPlaceholder(); }));
   }
 
   /* ============================== MODO ============================== */

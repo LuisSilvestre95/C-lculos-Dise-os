@@ -63,7 +63,8 @@
     const accent = media ? C.cyan : C.orange, accent2 = media ? C.navy : C.gold;
     const regimen = media ? 'MEDIA PRESIÓN · RENOUARD CUADRÁTICA' : 'BAJA PRESIÓN · RENOUARD LINEAL';
     const s = d.res.summary, p = d.params, crit = p.crit;
-    const ref = d.client.ref || ('TGS-' + d.dateISO.slice(0, 10).replace(/-/g, ''));
+    // El informe lleva por defecto el nombre del cliente; el campo "Informe" solo se usa si se cambia a mano.
+    const ref = (d.client.ref || '').trim() || (d.client.name || '').trim() || ('TGS-' + d.dateISO.slice(0, 10).replace(/-/g, ''));
 
     doc.setProperties({
       title: T(`Memoria de cálculo - ${d.client.name || 'Proyecto'} - ${media ? 'Media' : 'Baja'} presión`),
@@ -85,13 +86,23 @@
       doc.setFontSize(9.5); doc.setTextColor(...C.gold); doc.text(T('MEMORIA DE CÁLCULO · RED DE GAS · ' + regimen), M + 25, 19.5);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(200, 226, 238);
       doc.text(T('NIT 901.126.243-3 · Colombia · Tel. 322 361 8360 · 320 948 5534'), M + 25, 25);
-      // Caja del informe
-      const bx = W - M - 62;
-      doc.setFillColor(255, 255, 255); doc.setGState(new doc.GState({ opacity: 0.1 })); doc.roundedRect(bx, 6, 62, 20, 2.5, 2.5, 'F'); doc.setGState(new doc.GState({ opacity: 1 }));
-      doc.setDrawColor(...C.gold); doc.setLineWidth(0.3); doc.roundedRect(bx, 6, 62, 20, 2.5, 2.5, 'S');
-      doc.setFontSize(7); doc.setTextColor(200, 226, 238); doc.text('INFORME N.º', bx + 4, 11);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...C.white); doc.text(T(ref), bx + 4, 16.5, { maxWidth: 54 });
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...C.gold); doc.text(T(d.date), bx + 4, 22.5);
+      // Caja del informe: el texto se ajusta solo (1 o 2 líneas) para no salirse del recuadro.
+      const bw = 72, bx = W - M - bw, by = 5, bh = 23, tw0 = bw - 8;
+      doc.setFillColor(255, 255, 255); doc.setGState(new doc.GState({ opacity: 0.1 })); doc.roundedRect(bx, by, bw, bh, 2.5, 2.5, 'F'); doc.setGState(new doc.GState({ opacity: 1 }));
+      doc.setDrawColor(...C.gold); doc.setLineWidth(0.3); doc.roundedRect(bx, by, bw, bh, 2.5, 2.5, 'S');
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(6.8); doc.setTextColor(200, 226, 238); doc.text('INFORME', bx + 4, by + 4.8);
+      doc.setFont('helvetica', 'bold');
+      let fs = 11, lines = [T(ref)];
+      for (; fs >= 6.5; fs -= 0.25) {
+        doc.setFontSize(fs);
+        lines = doc.splitTextToSize(T(ref), tw0);
+        if (lines.length === 1 || (lines.length === 2 && fs <= 9.5)) break;
+      }
+      if (lines.length > 2) { lines = lines.slice(0, 2); lines[1] = lines[1].replace(/.{0,3}$/, '...'); }
+      doc.setFontSize(fs); doc.setTextColor(...C.white);
+      const ty = lines.length === 1 ? by + 12.5 : by + 10.2;
+      doc.text(lines, bx + 4, ty, { lineHeightFactor: 1.15 });
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.2); doc.setTextColor(...C.gold); doc.text(T(d.date), bx + 4, by + bh - 3);
     }
     /* Encabezado compacto (páginas siguientes) */
     function headerSmall() {
@@ -100,7 +111,7 @@
       if (B && B.flame) doc.addImage(B.flame, 'PNG', M, 2.2, 8.5, 10, 'flame', 'FAST');
       doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...C.white); doc.text('TODO GAS SYR S.A.S.', M + 11, 8.8);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...C.gold); doc.text(T(regimen), M + 55, 8.8);
-      doc.setTextColor(200, 226, 238); doc.text(T(`${d.client.name || 'Proyecto'} · Informe ${ref}`), W - M, 8.8, { align: 'right' });
+      doc.setTextColor(200, 226, 238); doc.text(T(ref === (d.client.name || '').trim() ? ref : `${d.client.name ? d.client.name + ' · ' : ''}Informe ${ref}`), W - M, 8.8, { align: 'right', maxWidth: W / 2 - 20 });
     }
     function sectionTitle(txt, y, x = M, color = accent) {
       doc.setFillColor(...color); doc.roundedRect(x, y - 3.6, 1.8, 5, 0.6, 0.6, 'F');
@@ -206,16 +217,17 @@
 
     // Firma
     if (y + 40 > H - 14) { doc.addPage(); headerSmall(); y = 24; }
-    const sigW = 76, sx = W - M - sigW;
+    const sigW = 66, sx = W - M - sigW;
     if (B && B.logo) doc.addImage(B.logo, 'PNG', M, y, 30, 31.8, 'logo', 'FAST');
     doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...C.ink); doc.text('TODO GAS SYR S.A.S.', M + 35, y + 9);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7.8); doc.setTextColor(...C.ink2);
     doc.text(T('NIT 901.126.243-3'), M + 35, y + 14);
     doc.text(T('Diseño, cálculo e instalación de redes de gas'), M + 35, y + 18.5);
     doc.text(T('Tel. 322 361 8360 · 320 948 5534 · Colombia'), M + 35, y + 23);
-    if (B && B.firma) doc.addImage(B.firma, 'PNG', sx + 8, y + 2, sigW - 16, (sigW - 16) / 3, 'firma', 'FAST');
-    doc.setDrawColor(...C.ink); doc.setLineWidth(0.35); doc.line(sx, y + 24, sx + sigW, y + 24);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.8); doc.setTextColor(...C.ink); doc.text(T('Luis Silvestre Supelano Beltrán'), sx + sigW / 2, y + 28.5, { align: 'center' });
+    const fw = 44, fh = fw / 3.99; // firma más pequeña y proporcionada
+    if (B && B.firma) doc.addImage(B.firma, 'PNG', sx + (sigW - fw) / 2, y + 22 - fh, fw, fh, 'firma', 'FAST');
+    doc.setDrawColor(...C.ink); doc.setLineWidth(0.3); doc.line(sx + 4, y + 24, sx + sigW - 4, y + 24);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.8); doc.setTextColor(...C.ink); doc.text('Luis Silvestre', sx + sigW / 2, y + 28.5, { align: 'center' });
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7.4); doc.setTextColor(...C.ink2);
     doc.text(T('Ingeniero · MP 041122-0809747 BYC - COPNIA'), sx + sigW / 2, y + 32.5, { align: 'center' });
     doc.text(T('Responsable del diseño y cálculos'), sx + sigW / 2, y + 36.3, { align: 'center' });
