@@ -1,5 +1,5 @@
 /*!
- * TODO GAS SYR S.A.S. — Aplicación: estado, interfaz, predicciones y exportación.
+ * TODO GAS SYR S.A.S. — Aplicación: estado, interfaz, cálculo y exportación.
  */
 (function () {
   'use strict';
@@ -42,6 +42,9 @@
       }));
     });
     out.mode = out.mode === 'media' ? 'media' : 'baja';
+    if (!E.GASES[out.gas]) out.gas = 'OTRO';
+    if (out.city !== 'custom' && !E.CITIES[+out.city]) out.city = 'custom';
+    delete out.demand;
     return out;
   }
   let saveTimer = 0;
@@ -132,7 +135,7 @@
     $('#gas').addEventListener('change', (e) => {
       state.gas = e.target.value;
       if (state.gas !== 'OTRO') { state.G = E.GASES[state.gas].G; $('#G').value = state.G; }
-      if (state.mode === 'baja' && state.gas === 'GLP' && E.num(M().pi) < 25) { M().pi = 28; $('#pi').value = 28; }
+      if (state.mode === 'baja' && ['GLP', 'GLPM', 'BUT'].includes(state.gas) && E.num(M().pi) < 25) { M().pi = 28; $('#pi').value = 28; }
       changed();
     });
     $('#G').addEventListener('input', (e) => { state.G = e.target.value; const g = E.GASES[state.gas]; if (g && E.num(e.target.value) !== g.G) { state.gas = 'OTRO'; $('#gas').value = 'OTRO'; } changed(); });
@@ -209,9 +212,9 @@
         const val = el.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
         if (el.value !== val) el.value = val;
         if (f === 'fin') {
-          // Propaga el renombre del nodo a los tramos que salían de él.
-          const old = s.fin;
-          M().segs.forEach((o, j) => { if (j !== i && o.ini === old && old) { o.ini = val; const inp = $(`#ini${j}`); if (inp) inp.value = val; } });
+          // Propaga el renombre del nodo a los tramos que salían de él (fijados al empezar a editar).
+          if (!el._kids) el._kids = M().segs.map((o, j) => (j !== i && s.fin && o.ini === s.fin ? j : -1)).filter((j) => j >= 0);
+          el._kids.forEach((j) => { const o = M().segs[j]; if (!o) return; o.ini = val; const inp = $(`#ini${j}`); if (inp) inp.value = val; const lb = $(`.seg-row[data-i="${j}"] .route-lbl`); if (lb) lb.textContent = `Tramo ${o.ini} → ${o.fin}`; });
         }
         s[f] = val;
         const lbl = row.querySelector('.route-lbl'); if (lbl) lbl.textContent = `Tramo ${s.ini} → ${s.fin}`;
@@ -222,6 +225,7 @@
       }
       changed();
     });
+    body.addEventListener('focusout', (e) => { if (e.target.dataset && e.target.dataset.f === 'fin') e.target._kids = null; });
     body.addEventListener('change', (e) => {
       const el = e.target, row = el.closest('.seg-row'); if (!row) return;
       const i = +row.dataset.i, s = M().segs[i];
@@ -437,11 +441,15 @@
     if (!res.summary.complete) { toast('Complete caudal y longitud de todos los tramos', 'bad'); return; }
     const out = E.autoSize(segs, params());
     const changes = out.segments.map((s, i) => ({ s, o: segs[i] })).filter(({ s, o }) => s.dn !== o.dn);
-    if (!changes.length) { toast(out.ok ? 'Los diámetros actuales ya son los óptimos' : 'No hay diámetros en catálogo que resuelvan la red', out.ok ? 'ok' : 'bad'); return; }
+    if (!changes.length) { toast(out.ok ? 'Los diámetros actuales ya son los adecuados' : 'Con este material no hay diámetros que cumplan: pruebe PE100 o acero', out.ok ? 'ok' : 'bad', 4500); return; }
     const list = changes.map(({ s, o }) => `<li><b>${esc(s.ini)}-${esc(s.fin)}</b>: ${esc((E.getPipe(o.mat, o.dn) || {}).label || o.dn)} → <b>${esc(E.getPipe(s.mat, s.dn).label)}</b></li>`).join('');
+    // Tramos que ni con el diámetro más grande de su material cumplen.
+    const after = E.calcNetwork(out.segments, params());
+    const maxed = after.rows.filter((r) => r.valid && !r.ok && E.PIPES[r.mat].sizes.length && E.PIPES[r.mat].sizes[E.PIPES[r.mat].sizes.length - 1].dn === r.dn);
+    const hint = maxed.length ? `<p>${maxed.map((r) => `Tramo <b>${esc(r.ini)}-${esc(r.fin)}</b>: ni con el diámetro más grande de ${esc(E.PIPES[r.mat].label)} cumple (${esc(why(r))}).`).join('<br>')} Cambie ese tramo a un material con diámetros mayores, por ejemplo polietileno PE100 o acero.</p>` : '';
     modal({
-      title: 'Dimensionamiento automático',
-      body: `<p>Método de pérdida unitaria admisible sobre la ruta más larga, con ajuste iterativo hasta cumplir todos los criterios.</p><ul>${list}</ul><p>${out.ok ? '<span class="st ok">' + icon('check') + 'La red quedará APROBADA</span>' : '<span class="st bad">' + icon('x') + 'Aun así no cumple: revise presión o caudales</span>'}</p>`,
+      title: 'Elegir diámetros automáticamente',
+      body: `<p>Método de pérdida unitaria admisible sobre la ruta más larga, con ajuste iterativo hasta cumplir todos los criterios.</p><ul>${list}</ul><p>${out.ok ? '<span class="st ok">' + icon('check') + 'La red quedará APROBADA</span>' : '<span class="st bad">' + icon('x') + 'Aun así no cumple</span>'}</p>${out.ok ? '' : hint || '<p>Revise la presión de suministro o los caudales.</p>'}`,
       actions: [{ label: 'Cancelar' }, { label: 'Aplicar cambios', primary: true, onClick: () => { const prev = JSON.parse(JSON.stringify(M().segs)); M().segs = out.segments.map((s) => ({ ...s })); M().segs.forEach(ensureDn); renderSegments(); changed(); undoToast(prev); } }]
     });
   }
@@ -492,7 +500,7 @@
   }
 
   function reportData() {
-    const data = last || compute();
+    const data = (last = compute()); // siempre con los datos más recientes
     const city = state.city !== 'custom' ? E.CITIES[+state.city] : null;
     return {
       mode: state.mode, client: { ...state.client }, date: dateStr(), dateISO: new Date().toISOString(),
@@ -536,7 +544,7 @@
     L.push([`Memoria de cálculo - ${d.mode === 'baja' ? 'Baja presión (Renouard lineal)' : 'Media presión (Renouard cuadrática)'}`].map(q).join(';'));
     L.push(['Cliente', d.client.name, 'Cédula/NIT', d.client.id].map(q).join(';'));
     L.push(['Dirección', d.client.address, 'Municipio', d.client.city].map(q).join(';'));
-    L.push(['Fecha', d.date, 'Proyecto', d.client.ref].map(q).join(';'));
+    L.push(['Fecha', d.date, 'Informe', (d.client.ref || '').trim() || d.client.name].map(q).join(';'));
     L.push(['Gas', d.params.gasLabel, 'Densidad relativa', n(d.params.G, 3)].map(q).join(';'));
     L.push(['Presión atmosférica (mbar)', n(d.params.patm, 1), 'Presión de suministro (mbar)', n(d.params.pi, 2)].map(q).join(';'));
     L.push(['Factor Le', n(d.params.factorLE, 2), 'Criterios', `Pmin ${d.params.crit.pmin} mbar; Vmax ${d.params.crit.vmax} m/s; Pérdida máx ${d.params.crit.maxLossPct} %`].map(q).join(';'));

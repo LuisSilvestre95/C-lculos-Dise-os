@@ -18,7 +18,6 @@
     EXP_Q: 1.82,
     EXP_D: 4.82,
     MBAR_A_PSI: 0.0145037738,
-    MBAR_A_KPA: 0.1,
     P_NIVEL_MAR: 1013.25
   };
 
@@ -203,7 +202,7 @@
     const p2Abs = sq > 0 ? Math.sqrt(sq) : 0;
     const pf = p2Abs - patm;
     const v = (K.VELOCIDAD * q) / (Math.max(p2Abs, 1) / 1000 * d * d);
-    return { dp: pi - pf, pf, v, p1Abs, p2Abs, term };
+    return { dp: pi - pf, pf, v, p1Abs, p2Abs };
   }
 
   const tramoFn = (mode) => (mode === 'media' ? mediumTramo : lowTramo);
@@ -271,13 +270,11 @@
     const topo = topology(segs);
     const rows = new Array(segs.length).fill(null);
     const warnings = [];
-    const piAt = new Map();
 
     topo.order.forEach((i) => {
       const s = segs[i];
       const parent = topo.parentOf[i];
       const pi = parent < 0 ? num(p.pi) : (rows[parent] && rows[parent].valid ? rows[parent].pf : NaN);
-      piAt.set(s.ini, pi);
       const le = s.l * num(p.factorLE, 1.2);
       const base = { index: i, ini: s.ini, fin: s.fin, q: s.q, qBase: s.qBase, l: s.l, le, d: s.d, mat: s.mat, dn: s.dn, pi, parent };
       if (!(s.q > 0) || !(s.l > 0) || !(s.d > 0) || !Number.isFinite(pi)) {
@@ -286,18 +283,16 @@
       }
       const r = f({ q: s.q, le, d: s.d, pi, G: p.G, patm: p.patm });
       const ev = evaluate(r, crit, pi);
-      rows[i] = { ...base, ...r, pf: r.pf, valid: true, ...ev, psi: r.pf * K.MBAR_A_PSI, lossAbsPct: r.p1Abs > 0 ? (r.p1Abs - r.p2Abs) / r.p1Abs * 100 : 0 };
+      rows[i] = { ...base, ...r, valid: true, ...ev, psi: r.pf * K.MBAR_A_PSI, lossAbsPct: r.p1Abs > 0 ? (r.p1Abs - r.p2Abs) / r.p1Abs * 100 : 0 };
     });
     segs.forEach((s, i) => { if (!rows[i]) rows[i] = { index: i, ini: s.ini, fin: s.fin, q: s.q, qBase: s.qBase, l: s.l, le: 0, d: s.d, mat: s.mat, dn: s.dn, pi: NaN, valid: false, reason: 'Topología' }; });
 
     // Balance de caudales: el caudal que sale de un nodo no puede superar el que entra.
     const outflow = new Map();
     segs.forEach((s) => outflow.set(s.ini, (outflow.get(s.ini) || 0) + s.qBase));
-    segs.forEach((s, i) => {
+    segs.forEach((s) => {
       const out = outflow.get(s.fin) || 0;
       if (out - s.qBase > 1e-6) warnings.push(`Nodo ${s.fin}: sale ${out.toFixed(2)} m³/h pero entran solo ${s.qBase.toFixed(2)} m³/h por el tramo ${s.ini}-${s.fin}.`);
-      else if (out > 0) rows[i].consumo = s.qBase - out;
-      else rows[i].consumo = s.qBase;
     });
 
     const valid = rows.filter((r) => r.valid);
@@ -320,7 +315,6 @@
       totalLossPct: critical && num(p.pi) > 0 ? (num(p.pi) - critical.pf) / num(p.pi) * 100 : NaN,
       vMax: valid.length ? Math.max(...valid.map((r) => r.v)) : NaN,
       qSource: segs.filter((s, i) => topo.parentOf[i] === -1 && topo.order.includes(i)).reduce((a, s) => a + s.q, 0),
-      lengthTotal: segs.reduce((a, s) => a + s.l, 0),
       complete,
       ok: complete && valid.every((r) => r.ok)
     };

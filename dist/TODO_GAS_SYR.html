@@ -365,7 +365,6 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
     <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-7"/></symbol>
-    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2z"/><path d="M19 3v4M17 5h4"/></symbol>
     <symbol id="i-wand" viewBox="0 0 24 24"><path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8L19 13M17.8 6.2L19 5M3 21l9-9M12.2 6.2L11 5"/></symbol>
     <symbol id="i-pdf" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15h6M9 18h4M9 12h2"/></symbol>
     <symbol id="i-table" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></symbol>
@@ -381,7 +380,6 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
     <symbol id="i-calc" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></symbol>
     <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></symbol>
-    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9z"/></symbol>
     <symbol id="i-install" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
     <symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/><path d="M7 15h10"/></symbol>
     <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></symbol>
@@ -626,7 +624,6 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     EXP_Q: 1.82,
     EXP_D: 4.82,
     MBAR_A_PSI: 0.0145037738,
-    MBAR_A_KPA: 0.1,
     P_NIVEL_MAR: 1013.25
   };
 
@@ -811,7 +808,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     const p2Abs = sq > 0 ? Math.sqrt(sq) : 0;
     const pf = p2Abs - patm;
     const v = (K.VELOCIDAD * q) / (Math.max(p2Abs, 1) / 1000 * d * d);
-    return { dp: pi - pf, pf, v, p1Abs, p2Abs, term };
+    return { dp: pi - pf, pf, v, p1Abs, p2Abs };
   }
 
   const tramoFn = (mode) => (mode === 'media' ? mediumTramo : lowTramo);
@@ -879,13 +876,11 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     const topo = topology(segs);
     const rows = new Array(segs.length).fill(null);
     const warnings = [];
-    const piAt = new Map();
 
     topo.order.forEach((i) => {
       const s = segs[i];
       const parent = topo.parentOf[i];
       const pi = parent < 0 ? num(p.pi) : (rows[parent] && rows[parent].valid ? rows[parent].pf : NaN);
-      piAt.set(s.ini, pi);
       const le = s.l * num(p.factorLE, 1.2);
       const base = { index: i, ini: s.ini, fin: s.fin, q: s.q, qBase: s.qBase, l: s.l, le, d: s.d, mat: s.mat, dn: s.dn, pi, parent };
       if (!(s.q > 0) || !(s.l > 0) || !(s.d > 0) || !Number.isFinite(pi)) {
@@ -894,18 +889,16 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
       }
       const r = f({ q: s.q, le, d: s.d, pi, G: p.G, patm: p.patm });
       const ev = evaluate(r, crit, pi);
-      rows[i] = { ...base, ...r, pf: r.pf, valid: true, ...ev, psi: r.pf * K.MBAR_A_PSI, lossAbsPct: r.p1Abs > 0 ? (r.p1Abs - r.p2Abs) / r.p1Abs * 100 : 0 };
+      rows[i] = { ...base, ...r, valid: true, ...ev, psi: r.pf * K.MBAR_A_PSI, lossAbsPct: r.p1Abs > 0 ? (r.p1Abs - r.p2Abs) / r.p1Abs * 100 : 0 };
     });
     segs.forEach((s, i) => { if (!rows[i]) rows[i] = { index: i, ini: s.ini, fin: s.fin, q: s.q, qBase: s.qBase, l: s.l, le: 0, d: s.d, mat: s.mat, dn: s.dn, pi: NaN, valid: false, reason: 'Topología' }; });
 
     // Balance de caudales: el caudal que sale de un nodo no puede superar el que entra.
     const outflow = new Map();
     segs.forEach((s) => outflow.set(s.ini, (outflow.get(s.ini) || 0) + s.qBase));
-    segs.forEach((s, i) => {
+    segs.forEach((s) => {
       const out = outflow.get(s.fin) || 0;
       if (out - s.qBase > 1e-6) warnings.push(`Nodo ${s.fin}: sale ${out.toFixed(2)} m³/h pero entran solo ${s.qBase.toFixed(2)} m³/h por el tramo ${s.ini}-${s.fin}.`);
-      else if (out > 0) rows[i].consumo = s.qBase - out;
-      else rows[i].consumo = s.qBase;
     });
 
     const valid = rows.filter((r) => r.valid);
@@ -928,7 +921,6 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
       totalLossPct: critical && num(p.pi) > 0 ? (num(p.pi) - critical.pf) / num(p.pi) * 100 : NaN,
       vMax: valid.length ? Math.max(...valid.map((r) => r.v)) : NaN,
       qSource: segs.filter((s, i) => topo.parentOf[i] === -1 && topo.order.includes(i)).reduce((a, s) => a + s.q, 0),
-      lengthTotal: segs.reduce((a, s) => a + s.l, 0),
       complete,
       ok: complete && valid.every((r) => r.ok)
     };
@@ -1246,7 +1238,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
   }
 
   /* ---------- Utilidades ---------- */
-  const MAP = { 'Δ': 'Delta ', '≤': '<=', '≥': '>=', '√': 'raiz', '–': '-', '—': '-', '▲': '', '▼': 'Opc. ', '✓': '', '→': '->', '₁': '1', '₂': '2', '…': '...', '−': '-', '⁻': '-', '⁷': '7', '⁵': '5', '¹': '1', '·': '·', '“': '"', '”': '"', '‘': "'", '’': "'" };
+  const MAP = { 'Δ': 'Delta ', '≤': '<=', '≥': '>=', '√': 'raiz', '–': '-', '—': '-', '✓': '', '→': '->', '₁': '1', '₂': '2', '…': '...', '−': '-', '⁻': '-', '⁷': '7', '⁵': '5', '¹': '1', '·': '·', '“': '"', '”': '"', '‘': "'", '’': "'" };
   const T = (s) => String(s ?? '').replace(/[^\x00-\xFF]/g, (c) => (c in MAP ? MAP[c] : '')).trim();
   const fmt = (v, d = 2) => (Number.isFinite(v) ? v.toFixed(d) : '-');
   const hex = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
@@ -1328,7 +1320,15 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
       if (B && B.flame) doc.addImage(B.flame, 'PNG', M, 2.2, 8.5, 10, 'flame', 'FAST');
       doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...C.white); doc.text('TODO GAS SYR S.A.S.', M + 11, 8.8);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...C.gold); doc.text(T(regimen), M + 55, 8.8);
-      doc.setTextColor(200, 226, 238); doc.text(T(ref === (d.client.name || '').trim() ? ref : `${d.client.name ? d.client.name + ' · ' : ''}Informe ${ref}`), W - M, 8.8, { align: 'right', maxWidth: W / 2 - 20 });
+      doc.setTextColor(200, 226, 238); oneLine(T(ref === (d.client.name || '').trim() ? ref : `${d.client.name ? d.client.name + ' · ' : ''}Informe ${ref}`), W - M, 8.8, W / 2 - 30, 7.5, { align: 'right' });
+    }
+    /** Escribe en una sola línea: reduce la letra hasta 6.5 pt y, si aún no cabe, recorta con "...". */
+    function oneLine(txt, x, y, maxW, size, opt = {}) {
+      let fs = size; doc.setFontSize(fs);
+      while (doc.getTextWidth(txt) > maxW && fs > 6.5) { fs -= 0.25; doc.setFontSize(fs); }
+      let t = txt;
+      while (doc.getTextWidth(t) > maxW && t.length > 4) t = t.slice(0, -4) + '...';
+      doc.text(t, x, y, opt);
     }
     function sectionTitle(txt, y, x = M, color = accent) {
       doc.setFillColor(...color); doc.roundedRect(x, y - 3.6, 1.8, 5, 0.6, 0.6, 'F');
@@ -1344,7 +1344,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
       rows.forEach(([k, v], i) => {
         const yy = y + i * 5.1;
         doc.setFont('helvetica', 'bold'); doc.setFontSize(7.4); doc.setTextColor(...C.muted); doc.text(T(k), x, yy);
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.2); doc.setTextColor(...C.ink); doc.text(T(v || '-'), x + labelW, yy, { maxWidth: maxW - labelW });
+        doc.setFont('helvetica', 'normal'); doc.setTextColor(...C.ink); oneLine(T(v || '-'), x + labelW, yy, maxW - labelW, 8.2);
       });
     }
 
@@ -1468,7 +1468,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
 </script>
 <script>
 /*!
- * TODO GAS SYR S.A.S. — Aplicación: estado, interfaz, predicciones y exportación.
+ * TODO GAS SYR S.A.S. — Aplicación: estado, interfaz, cálculo y exportación.
  */
 (function () {
   'use strict';
@@ -1511,6 +1511,9 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
       }));
     });
     out.mode = out.mode === 'media' ? 'media' : 'baja';
+    if (!E.GASES[out.gas]) out.gas = 'OTRO';
+    if (out.city !== 'custom' && !E.CITIES[+out.city]) out.city = 'custom';
+    delete out.demand;
     return out;
   }
   let saveTimer = 0;
@@ -1601,7 +1604,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     $('#gas').addEventListener('change', (e) => {
       state.gas = e.target.value;
       if (state.gas !== 'OTRO') { state.G = E.GASES[state.gas].G; $('#G').value = state.G; }
-      if (state.mode === 'baja' && state.gas === 'GLP' && E.num(M().pi) < 25) { M().pi = 28; $('#pi').value = 28; }
+      if (state.mode === 'baja' && ['GLP', 'GLPM', 'BUT'].includes(state.gas) && E.num(M().pi) < 25) { M().pi = 28; $('#pi').value = 28; }
       changed();
     });
     $('#G').addEventListener('input', (e) => { state.G = e.target.value; const g = E.GASES[state.gas]; if (g && E.num(e.target.value) !== g.G) { state.gas = 'OTRO'; $('#gas').value = 'OTRO'; } changed(); });
@@ -1678,9 +1681,9 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
         const val = el.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
         if (el.value !== val) el.value = val;
         if (f === 'fin') {
-          // Propaga el renombre del nodo a los tramos que salían de él.
-          const old = s.fin;
-          M().segs.forEach((o, j) => { if (j !== i && o.ini === old && old) { o.ini = val; const inp = $(`#ini${j}`); if (inp) inp.value = val; } });
+          // Propaga el renombre del nodo a los tramos que salían de él (fijados al empezar a editar).
+          if (!el._kids) el._kids = M().segs.map((o, j) => (j !== i && s.fin && o.ini === s.fin ? j : -1)).filter((j) => j >= 0);
+          el._kids.forEach((j) => { const o = M().segs[j]; if (!o) return; o.ini = val; const inp = $(`#ini${j}`); if (inp) inp.value = val; const lb = $(`.seg-row[data-i="${j}"] .route-lbl`); if (lb) lb.textContent = `Tramo ${o.ini} → ${o.fin}`; });
         }
         s[f] = val;
         const lbl = row.querySelector('.route-lbl'); if (lbl) lbl.textContent = `Tramo ${s.ini} → ${s.fin}`;
@@ -1691,6 +1694,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
       }
       changed();
     });
+    body.addEventListener('focusout', (e) => { if (e.target.dataset && e.target.dataset.f === 'fin') e.target._kids = null; });
     body.addEventListener('change', (e) => {
       const el = e.target, row = el.closest('.seg-row'); if (!row) return;
       const i = +row.dataset.i, s = M().segs[i];
@@ -1906,11 +1910,15 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     if (!res.summary.complete) { toast('Complete caudal y longitud de todos los tramos', 'bad'); return; }
     const out = E.autoSize(segs, params());
     const changes = out.segments.map((s, i) => ({ s, o: segs[i] })).filter(({ s, o }) => s.dn !== o.dn);
-    if (!changes.length) { toast(out.ok ? 'Los diámetros actuales ya son los óptimos' : 'No hay diámetros en catálogo que resuelvan la red', out.ok ? 'ok' : 'bad'); return; }
+    if (!changes.length) { toast(out.ok ? 'Los diámetros actuales ya son los adecuados' : 'Con este material no hay diámetros que cumplan: pruebe PE100 o acero', out.ok ? 'ok' : 'bad', 4500); return; }
     const list = changes.map(({ s, o }) => `<li><b>${esc(s.ini)}-${esc(s.fin)}</b>: ${esc((E.getPipe(o.mat, o.dn) || {}).label || o.dn)} → <b>${esc(E.getPipe(s.mat, s.dn).label)}</b></li>`).join('');
+    // Tramos que ni con el diámetro más grande de su material cumplen.
+    const after = E.calcNetwork(out.segments, params());
+    const maxed = after.rows.filter((r) => r.valid && !r.ok && E.PIPES[r.mat].sizes.length && E.PIPES[r.mat].sizes[E.PIPES[r.mat].sizes.length - 1].dn === r.dn);
+    const hint = maxed.length ? `<p>${maxed.map((r) => `Tramo <b>${esc(r.ini)}-${esc(r.fin)}</b>: ni con el diámetro más grande de ${esc(E.PIPES[r.mat].label)} cumple (${esc(why(r))}).`).join('<br>')} Cambie ese tramo a un material con diámetros mayores, por ejemplo polietileno PE100 o acero.</p>` : '';
     modal({
-      title: 'Dimensionamiento automático',
-      body: `<p>Método de pérdida unitaria admisible sobre la ruta más larga, con ajuste iterativo hasta cumplir todos los criterios.</p><ul>${list}</ul><p>${out.ok ? '<span class="st ok">' + icon('check') + 'La red quedará APROBADA</span>' : '<span class="st bad">' + icon('x') + 'Aun así no cumple: revise presión o caudales</span>'}</p>`,
+      title: 'Elegir diámetros automáticamente',
+      body: `<p>Método de pérdida unitaria admisible sobre la ruta más larga, con ajuste iterativo hasta cumplir todos los criterios.</p><ul>${list}</ul><p>${out.ok ? '<span class="st ok">' + icon('check') + 'La red quedará APROBADA</span>' : '<span class="st bad">' + icon('x') + 'Aun así no cumple</span>'}</p>${out.ok ? '' : hint || '<p>Revise la presión de suministro o los caudales.</p>'}`,
       actions: [{ label: 'Cancelar' }, { label: 'Aplicar cambios', primary: true, onClick: () => { const prev = JSON.parse(JSON.stringify(M().segs)); M().segs = out.segments.map((s) => ({ ...s })); M().segs.forEach(ensureDn); renderSegments(); changed(); undoToast(prev); } }]
     });
   }
@@ -1961,7 +1969,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
   }
 
   function reportData() {
-    const data = last || compute();
+    const data = (last = compute()); // siempre con los datos más recientes
     const city = state.city !== 'custom' ? E.CITIES[+state.city] : null;
     return {
       mode: state.mode, client: { ...state.client }, date: dateStr(), dateISO: new Date().toISOString(),
@@ -2005,7 +2013,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     L.push([`Memoria de cálculo - ${d.mode === 'baja' ? 'Baja presión (Renouard lineal)' : 'Media presión (Renouard cuadrática)'}`].map(q).join(';'));
     L.push(['Cliente', d.client.name, 'Cédula/NIT', d.client.id].map(q).join(';'));
     L.push(['Dirección', d.client.address, 'Municipio', d.client.city].map(q).join(';'));
-    L.push(['Fecha', d.date, 'Proyecto', d.client.ref].map(q).join(';'));
+    L.push(['Fecha', d.date, 'Informe', (d.client.ref || '').trim() || d.client.name].map(q).join(';'));
     L.push(['Gas', d.params.gasLabel, 'Densidad relativa', n(d.params.G, 3)].map(q).join(';'));
     L.push(['Presión atmosférica (mbar)', n(d.params.patm, 1), 'Presión de suministro (mbar)', n(d.params.pi, 2)].map(q).join(';'));
     L.push(['Factor Le', n(d.params.factorLE, 2), 'Criterios', `Pmin ${d.params.crit.pmin} mbar; Vmax ${d.params.crit.vmax} m/s; Pérdida máx ${d.params.crit.maxLossPct} %`].map(q).join(';'));

@@ -20,6 +20,8 @@ Aplicación web para calcular y documentar redes de **gas natural y GLP** en **b
 - **Exportación**: PDF con logo, resultados del cálculo, gráficas y firma; compartir el PDF; CSV para Excel; guardar y abrir proyectos; imprimir.
 - Modo claro y oscuro. Los datos se guardan automáticamente en el dispositivo.
 
+Hay dos PDF de ejemplo en `docs/` (baja y media presión).
+
 ## Fórmulas
 
 - Baja presión: `ΔP[mbar] = 23 200 · S · Le[m] · Q^1.82 · D^-4.82`

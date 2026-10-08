@@ -29,7 +29,7 @@
   }
 
   /* ---------- Utilidades ---------- */
-  const MAP = { 'Δ': 'Delta ', '≤': '<=', '≥': '>=', '√': 'raiz', '–': '-', '—': '-', '▲': '', '▼': 'Opc. ', '✓': '', '→': '->', '₁': '1', '₂': '2', '…': '...', '−': '-', '⁻': '-', '⁷': '7', '⁵': '5', '¹': '1', '·': '·', '“': '"', '”': '"', '‘': "'", '’': "'" };
+  const MAP = { 'Δ': 'Delta ', '≤': '<=', '≥': '>=', '√': 'raiz', '–': '-', '—': '-', '✓': '', '→': '->', '₁': '1', '₂': '2', '…': '...', '−': '-', '⁻': '-', '⁷': '7', '⁵': '5', '¹': '1', '·': '·', '“': '"', '”': '"', '‘': "'", '’': "'" };
   const T = (s) => String(s ?? '').replace(/[^\x00-\xFF]/g, (c) => (c in MAP ? MAP[c] : '')).trim();
   const fmt = (v, d = 2) => (Number.isFinite(v) ? v.toFixed(d) : '-');
   const hex = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
@@ -111,7 +111,15 @@
       if (B && B.flame) doc.addImage(B.flame, 'PNG', M, 2.2, 8.5, 10, 'flame', 'FAST');
       doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...C.white); doc.text('TODO GAS SYR S.A.S.', M + 11, 8.8);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...C.gold); doc.text(T(regimen), M + 55, 8.8);
-      doc.setTextColor(200, 226, 238); doc.text(T(ref === (d.client.name || '').trim() ? ref : `${d.client.name ? d.client.name + ' · ' : ''}Informe ${ref}`), W - M, 8.8, { align: 'right', maxWidth: W / 2 - 20 });
+      doc.setTextColor(200, 226, 238); oneLine(T(ref === (d.client.name || '').trim() ? ref : `${d.client.name ? d.client.name + ' · ' : ''}Informe ${ref}`), W - M, 8.8, W / 2 - 30, 7.5, { align: 'right' });
+    }
+    /** Escribe en una sola línea: reduce la letra hasta 6.5 pt y, si aún no cabe, recorta con "...". */
+    function oneLine(txt, x, y, maxW, size, opt = {}) {
+      let fs = size; doc.setFontSize(fs);
+      while (doc.getTextWidth(txt) > maxW && fs > 6.5) { fs -= 0.25; doc.setFontSize(fs); }
+      let t = txt;
+      while (doc.getTextWidth(t) > maxW && t.length > 4) t = t.slice(0, -4) + '...';
+      doc.text(t, x, y, opt);
     }
     function sectionTitle(txt, y, x = M, color = accent) {
       doc.setFillColor(...color); doc.roundedRect(x, y - 3.6, 1.8, 5, 0.6, 0.6, 'F');
@@ -127,7 +135,7 @@
       rows.forEach(([k, v], i) => {
         const yy = y + i * 5.1;
         doc.setFont('helvetica', 'bold'); doc.setFontSize(7.4); doc.setTextColor(...C.muted); doc.text(T(k), x, yy);
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.2); doc.setTextColor(...C.ink); doc.text(T(v || '-'), x + labelW, yy, { maxWidth: maxW - labelW });
+        doc.setFont('helvetica', 'normal'); doc.setTextColor(...C.ink); oneLine(T(v || '-'), x + labelW, yy, maxW - labelW, 8.2);
       });
     }
 
