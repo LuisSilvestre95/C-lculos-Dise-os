@@ -86,34 +86,43 @@
         const xa = sx(Math.max(b.from, xt.min)), xb = sx(Math.min(b.to, xt.max));
         if (xb > xa) { ctx.fillStyle = b.color; ctx.globalAlpha = 0.09; ctx.fillRect(xa, Y0, xb - xa, Y1 - Y0); ctx.globalAlpha = 1; }
       });
-      // Área bajo la curva
       const pts = spec.points.filter((p) => Number.isFinite(p.y)).map((p) => ({ ...p, px: sx(p.x), py: sy(p.y) }));
       if (pts.length) {
-        const g = ctx.createLinearGradient(0, Y0, 0, Y1);
-        g.addColorStop(0, spec.color || t.s1); g.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx.globalAlpha = 0.12; ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(pts[0].px, Y1);
-        pts.forEach((p) => ctx.lineTo(p.px, p.py)); ctx.lineTo(pts[pts.length - 1].px, Y1); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
-        ctx.strokeStyle = spec.color || t.s1; ctx.lineWidth = 1.75 * fs; ctx.lineJoin = 'round'; ctx.beginPath();
-        pts.forEach((p, i) => (i ? ctx.lineTo(p.px, p.py) : ctx.moveTo(p.px, p.py))); ctx.stroke();
-        if (spec.markers !== false) pts.forEach((p) => {
-          ctx.beginPath(); ctx.arc(p.px, p.py, 3.2 * fs, 0, Math.PI * 2); ctx.fillStyle = t.surface; ctx.fill();
-          ctx.lineWidth = 1.75 * fs; ctx.strokeStyle = p.bad ? t.bad : (spec.color || t.s1); ctx.stroke();
-        });
-        // Etiquetas directas selectivas
-        ctx.font = F(9.5, 700); ctx.fillStyle = t.ink; ctx.textBaseline = 'bottom';
-        // Etiquetas sin superponerse: si dos nodos quedan muy juntos se omite el anterior (se conserva el último).
-        const minGap = 16 * fs;
-        const show = pts.map((p) => !!p.label);
-        for (let i = pts.length - 2; i >= 0; i--) {
-          let j = i + 1; while (j < pts.length && !show[j]) j++;
-          if (j < pts.length && show[i] && Math.hypot(pts[j].px - pts[i].px, pts[j].py - pts[i].py) < minGap) show[i] = i === 0; // la fuente siempre se nombra
-          if (i === 0 && show[0] && j < pts.length && Math.hypot(pts[j].px - pts[0].px, pts[j].py - pts[0].py) < minGap) show[j] = j === pts.length - 1 ? true : false;
+        const col = spec.color || t.s1;
+        // Tramos a dibujar: red ramificada (links) o una sola línea continua.
+        const links = spec.links || pts.slice(1).map((_, i) => [i, i + 1, true]);
+        const main = links.filter((l) => l[2]);
+        // Sombra suave solo bajo el recorrido principal
+        if (main.length) {
+          const chain = [pts[main[0][0]], ...main.map((l) => pts[l[1]])];
+          const g = ctx.createLinearGradient(0, Y0, 0, Y1);
+          g.addColorStop(0, col); g.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.globalAlpha = 0.12; ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(chain[0].px, Y1);
+          chain.forEach((p) => ctx.lineTo(p.px, p.py)); ctx.lineTo(chain[chain.length - 1].px, Y1); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
         }
-        pts.forEach((p, i) => {
-          if (!show[i]) return;
-          const near0 = i > 0 && show[0] && Math.abs(p.px - pts[0].px) < minGap;
-          ctx.textAlign = i === 0 ? 'left' : i === pts.length - 1 ? 'right' : 'center';
-          ctx.fillText(p.label, p.px + (near0 ? 10 * fs : 0), p.py - 8 * fs);
+        ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.strokeStyle = col;
+        // Ramales: más delgados y un poco más claros; recorrido principal: más grueso, encima.
+        [false, true].forEach((isMain) => {
+          ctx.lineWidth = (isMain ? 1.9 : 1.25) * fs; ctx.globalAlpha = isMain ? 1 : 0.7;
+          links.filter((l) => !!l[2] === isMain).forEach(([i, j]) => { ctx.beginPath(); ctx.moveTo(pts[i].px, pts[i].py); ctx.lineTo(pts[j].px, pts[j].py); ctx.stroke(); });
+        });
+        ctx.globalAlpha = 1;
+        if (spec.markers !== false) pts.forEach((p) => {
+          ctx.beginPath(); ctx.arc(p.px, p.py, (p.main === false ? 2.6 : 3.2) * fs, 0, Math.PI * 2); ctx.fillStyle = t.surface; ctx.fill();
+          ctx.lineWidth = 1.6 * fs; ctx.strokeStyle = p.bad ? t.bad : col; ctx.stroke();
+        });
+        // Nombres de nodo sin superponerse: primero la fuente y el final del recorrido, luego el resto.
+        ctx.font = F(9.5, 700); ctx.fillStyle = t.ink; ctx.textBaseline = 'bottom';
+        const minGap = 15 * fs, placed = [];
+        const lastMain = main.length ? main[main.length - 1][1] : pts.length - 1;
+        const order = [0, lastMain, ...pts.map((_, i) => i).filter((i) => i !== 0 && i !== lastMain)];
+        order.forEach((i) => {
+          const p = pts[i]; if (!p || !p.label) return;
+          let lx = p.px, ly = p.py - 7 * fs;
+          const clash = (x, y) => placed.some((q) => Math.abs(q.x - x) < minGap && Math.abs(q.y - y) < 11 * fs);
+          if (clash(lx, ly)) { ly = p.py + 15 * fs; if (clash(lx, ly)) return; } // si arriba choca, debajo; si no cabe, se omite
+          const align = p.px - X0 < 10 * fs ? 'left' : X1 - p.px < 10 * fs ? 'right' : 'center';
+          ctx.textAlign = align; ctx.fillText(p.label, lx, ly); placed.push({ x: lx, y: ly });
         });
         layout.items = pts;
       }
@@ -192,7 +201,8 @@
       if (!this.layout || !this.layout.items.length) return;
       const r = this.canvas.getBoundingClientRect(); const x = e.clientX - r.left;
       let best = null, bd = Infinity;
-      this.layout.items.forEach((it, i) => { const d = Math.abs(it.px - x); if (d < bd) { bd = d; best = { item: it, index: i }; } });
+      const y = e.clientY - r.top, two = !!this.spec.links;
+      this.layout.items.forEach((it, i) => { const d = two ? Math.hypot(it.px - x, (it.py - y) * 0.6) : Math.abs(it.px - x); if (d < bd) { bd = d; best = { item: it, index: i }; } });
       if (!best) return;
       this.hover = best; this.render();
       this.tip.innerHTML = best.item.tip || '';

@@ -423,12 +423,29 @@
       const empty = { empty: true, emptyText: 'Agregue tramos con caudal, longitud y diámetro' };
       return { profile: empty, vel: empty };
     }
-    const path = res.path.map((i) => res.rows[i]);
-    const first = path[0];
-    const points = [{ x: 0, y: first.pi, label: first.ini, tip: `<b>Nodo ${esc(first.ini)} (inicio)</b>${fmt(first.pi, 2)} mbar` }]
-      .concat(path.map((r) => ({ x: r.dist, y: r.pf, label: r.fin, bad: !r.ok, tip: `<b>Nodo ${esc(r.fin)}</b>P = ${fmt(r.pf, 2)} mbar<br>Distancia ${fmt(r.dist, 1)} m · ΔP ${fmt(r.dp, 3)} mbar` })));
+    // Todos los nodos de la red: la fuente y el final de cada tramo calculado.
+    const onPath = new Set(res.path);
+    const points = [], idxOf = new Map(), links = [];
+    valid.forEach((r) => {
+      if (r.parent < 0 && !idxOf.has('src:' + r.ini)) {
+        idxOf.set('src:' + r.ini, points.length);
+        points.push({ x: 0, y: r.pi, label: r.ini, main: true, tip: `<b>Nodo ${esc(r.ini)} (inicio)</b>${fmt(r.pi, 2)} mbar` });
+      }
+    });
+    valid.forEach((r) => {
+      idxOf.set(r.index, points.length);
+      points.push({ x: r.dist, y: r.pf, label: r.fin, bad: !r.ok, main: onPath.has(r.index), tip: `<b>Nodo ${esc(r.fin)}</b>P = ${fmt(r.pf, 2)} mbar<br>Distancia ${fmt(r.dist, 1)} m · tramo ${esc(r.ini)}-${esc(r.fin)}` });
+    });
+    valid.forEach((r) => {
+      const from = r.parent >= 0 ? idxOf.get(r.parent) : idxOf.get('src:' + r.ini);
+      if (from != null) links.push([from, idxOf.get(r.index), onPath.has(r.index)]);
+    });
+    // El recorrido principal va en orden desde la fuente.
+    links.sort((a, b) => (b[2] - a[2]) || 0);
+    const mainLinks = res.path.map((i) => links.find((l) => l[1] === idxOf.get(i))).filter(Boolean);
+    const otherLinks = links.filter((l) => !l[2]);
     const profile = {
-      kind: 'line', points, xLabel: 'Distancia equivalente (m)', yLabel: 'Presión (mbar)', color: null,
+      kind: 'line', points, links: [...mainLinks, ...otherLinks], xLabel: 'Distancia equivalente (m)', yLabel: 'Presión (mbar)', color: null,
       refs: p.crit.pmin > 0 ? [{ y: p.crit.pmin, label: `Mínima ${p.crit.pmin} mbar` }] : []
     };
     const vel = {

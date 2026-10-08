@@ -219,7 +219,7 @@
       const img = Charts.toPNG({ ...spec, fontScale: 1 }, pw * pxPerMm, ph * pxPerMm, 3.6);
       doc.addImage(img, 'PNG', x + 4, yy + 15, pw, ph, undefined, 'FAST');
     };
-    drawChart(d.specs.profile, M, y, cw, ch, 'Presión en cada nodo', 'Desde la fuente hasta el punto final de la red');
+    drawChart(d.specs.profile, M, y, cw, ch, 'Presión en cada nodo', 'Todos los nodos · gruesa: hasta la menor presión · delgada: ramales');
     drawChart(d.specs.vel, M + cw + 6, y, cw, ch, 'Velocidad por tramo', 'Rojo: supera el límite · ámbar: >= 80 % del límite');
     y += ch + 8;
 

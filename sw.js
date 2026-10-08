@@ -1,6 +1,6 @@
 /* Service worker: la aplicación funciona sin conexión después de la primera visita.
    Siempre busca primero la versión nueva en internet; la copia guardada solo se usa sin conexión. */
-const CACHE = 'tgs-v2.6.0';
+const CACHE = 'tgs-v2.7.0';
 const SHELL = [
   './', 'index.html', 'css/app.css', 'js/engine.js', 'js/charts.js', 'js/pdf.js', 'js/app.js',
   'assets/flame.png', 'assets/brand.js', 'vendor/jspdf.umd.min.js', 'vendor/jspdf.plugin.autotable.min.js',
