@@ -19,6 +19,11 @@
   // Aplica el tema antes de pintar para evitar parpadeo.
   try { var t = localStorage.getItem('tgs-theme'); if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); } catch (e) {}
 </script>
+<script>
+  // Fuerza la firma correcta en el PDF para evitar usar una firma embebida vieja en caché.
+  window.TGS_BRAND = window.TGS_BRAND || {};
+  window.TGS_BRAND.firma = 'assets/firma.png';
+</script>
 </head>
 <body data-mode="baja">
 
@@ -49,7 +54,7 @@
     <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol>
     <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
     <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
-    <symbol id="i-calc" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></symbol>
+    <symbol id="i-calc" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/><path d="M8 6h8M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></symbol>
     <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></symbol>
     <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9z"/></symbol>
     <symbol id="i-install" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
@@ -233,7 +238,7 @@
       <button class="xbtn x-share" id="shareBtn" type="button"><svg><use href="#i-share"/></svg><b>Compartir PDF</b><small>WhatsApp, correo, Drive…</small></button>
       <button class="xbtn x-csv" id="csvBtn" type="button"><svg><use href="#i-table"/></svg><b>Excel (CSV)</b><small>Tabla de resultados completa</small></button>
       <button class="xbtn x-save" id="saveBtn" type="button"><svg><use href="#i-save"/></svg><b>Guardar proyecto</b><small>Archivo .json reutilizable</small></button>
-      <label class="xbtn x-open" for="openFile"><svg><use href="#i-folder"/></svg><b>Abrir proyecto</b><small>Cargar archivo .json</small><input type="file" id="openFile" accept=".json,application/json" hidden></label>
+      <label class="xbtn x-open" for="openFile"><svg><use href="#i-folder"/></svg><b>Abrir proyecto</b><small>Cargar archivo .json</small><input type="file" id="openFile" accept=".json,application/json"></label>
       <button class="xbtn x-print" id="printBtn" type="button"><svg><use href="#i-print"/></svg><b>Imprimir</b><small>Vista de impresión</small></button>
     </div>
   </section>
@@ -242,13 +247,13 @@
   <details class="card formulas">
     <summary class="card-title"><svg><use href="#i-book"/></svg>Fórmulas y bases de cálculo</summary>
     <div class="card-body formula-body">
-      <div class="formula"><b>Baja presión — Renouard lineal</b><code>ΔP = 23 200 · S · Le · Q<sup>1.82</sup> · D<sup>−4.82</sup></code><small>ΔP en mbar · Le en m · Q en m³/h · D interno en mm</small></div>
-      <div class="formula"><b>Media presión — Renouard cuadrática</b><code>P₁² − P₂² = 48 600 · S · Le · Q<sup>1.82</sup> · D<sup>−4.82</sup></code><small>P absolutas en bar, Le en km (equivale a 4.86·10⁷ con P en mbar y Le en m)</small></div>
+      <div class="formula"><b>Baja presión — Renouard lineal</b><code>ΔP = 23 200 · S · Le · Q<sup>1.82</sup> · D<sup>−4.82</sup></code><small>ΔP en mbar · Le en m · Q en m³/h · D en mm</small></div>
+      <div class="formula"><b>Media presión — Renouard cuadrática</b><code>P₁² − P₂² = 48 600 · S · Le · Q<sup>1.82</sup> · D<sup>−4.82</sup></code><small>P absolutas en bar, Le en m</small></div>
       <div class="formula"><b>Velocidad del gas</b><code>V = 354 · Q / (P<sub>abs</sub> · D²)</code><small>V en m/s · P absoluta en bar al final del tramo · D en mm</small></div>
       <div class="formula"><b>Longitud equivalente</b><code>Le = L × factor</code><small>Factor 1.2 = 20 % adicional por accesorios</small></div>
       <div class="formula"><b>Presión atmosférica (ISA)</b><code>P<sub>atm</sub> = 1013.25 · (1 − 2.25577·10⁻⁵ · h)<sup>5.25588</sup></code><small>h = altitud en m s. n. m.</small></div>
       <div class="formula"><b>Caudal por potencia</b><code>Q = Potencia / PCS</code><small>PCS GN ≈ 10.35 kWh/m³ · GLP ≈ 26 kWh/m³</small></div>
-      <p class="formula-note">Referencias: NTC 2505 (instalaciones para suministro de gas en edificaciones), NTC 3838 (presiones de operación), Resolución 90902 de 2013 (RETIGAS). Los criterios de aceptación son editables según el proyecto y la exigencia del distribuidor.</p>
+      <p class="formula-note">Referencias: NTC 2505 (instalaciones para suministro de gas en edificaciones), NTC 3838 (presiones de operación), Resolución 90902 de 2013 (RETIGAS). Los criterios de aceptación se adaptan al uso del documento y a la normativa local.</p>
     </div>
   </details>
 </main>
