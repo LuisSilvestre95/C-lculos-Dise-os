@@ -169,7 +169,7 @@
     if (!cat || !cat.sizes.length) return '<option value="">Ø interno manual →</option>';
     return cat.sizes.map((s) => `<option value="${esc(s.dn)}"${s.dn === dn ? ' selected' : ''}>${esc(s.label)}</option>`).join('');
   }
-  const matOptions = (mat) => Object.entries(E.PIPES).map(([k, p]) => `<option value="${k}"${k === mat ? ' selected' : ''}>${esc(p.label)}</option>`).join('');
+  const matOptions = (mat) => Object.entries(E.PIPES).map(([k, p]) => `<option value="${k}" title="${esc(p.label)}"${k === mat ? ' selected' : ''}>${esc(p.short || p.label)}</option>`).join('');
   function ensureDn(seg) {
     const cat = E.PIPES[seg.mat];
     if (cat && cat.sizes.length && !cat.sizes.some((s) => s.dn === seg.dn)) {
@@ -188,7 +188,7 @@
       <div class="cell c-fin"><label for="fin${i}">Fin</label><input id="fin${i}" data-f="fin" value="${esc(s.fin)}" maxlength="4" autocapitalize="characters" autocomplete="off"></div>
       <div class="cell c-q"><label for="q${i}">Caudal (m³/h)</label><input id="q${i}" data-f="q" value="${esc(s.q)}" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off"></div>
       <div class="cell c-l"><label for="l${i}">Longitud (m)</label><input id="l${i}" data-f="l" value="${esc(s.l)}" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off"></div>
-      <div class="cell c-mat"><label for="m${i}">Material</label><select id="m${i}" data-f="mat">${matOptions(s.mat)}</select></div>
+      <div class="cell c-mat"><label for="m${i}">Material</label><select id="m${i}" data-f="mat" title="${esc((E.PIPES[s.mat] || {}).label || '')}">${matOptions(s.mat)}</select></div>
       <div class="cell c-dn"><label for="d${i}">Diámetro</label><select id="d${i}" data-f="dn"${custom ? ' disabled' : ''}>${dnOptions(s.mat, s.dn)}</select></div>
       <div class="cell c-di"><label for="di${i}">Ø interno (mm)</label><input id="di${i}" data-f="di" value="${esc(s.di)}" type="text" inputmode="decimal"${custom ? '' : ' readonly tabindex="-1"'} placeholder="mm"></div>
       <div class="cell c-res"><label>Resultado</label><div class="res-chip">—</div></div>
@@ -239,7 +239,7 @@
       const el = e.target, row = el.closest('.seg-row'); if (!row) return;
       const i = +row.dataset.i, s = M().segs[i];
       if (el.dataset.f === 'mat') {
-        s.mat = el.value; ensureDn(s);
+        s.mat = el.value; ensureDn(s); el.title = E.PIPES[s.mat].label;
         const d = row.querySelector('[data-f="dn"]'); d.innerHTML = dnOptions(s.mat, s.dn); d.disabled = s.mat === 'CUSTOM';
         const di = row.querySelector('[data-f="di"]'); di.value = s.di; di.readOnly = s.mat !== 'CUSTOM'; di.tabIndex = s.mat === 'CUSTOM' ? 0 : -1;
         if (s.mat === 'CUSTOM') di.focus();
@@ -372,7 +372,7 @@
       row.classList.toggle('ok', !!(r.valid && r.ok)); row.classList.toggle('bad', !!(r.valid && !r.ok));
       const chip = row.querySelector('.res-chip');
       chip.innerHTML = r.valid
-        ? `${statusChip(r, true)}<span>Pf <b>${fmt(r.pf, 2)}</b></span><span>V <b>${fmt(r.v, 2)}</b></span>`
+        ? `${statusChip(r)}<span class="rc-vals"><span>Pf <b>${fmt(r.pf, 2)}</b></span><span>V <b>${fmt(r.v, 2)}</b></span></span>${r.ok ? '' : `<span class="rc-why">${esc(why(r))}</span>`}`
         : statusChip(r);
     });
   }

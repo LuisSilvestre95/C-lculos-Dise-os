@@ -50,7 +50,7 @@
       ctx.fillText(spec && spec.emptyText ? spec.emptyText : 'Sin datos para graficar', w / 2, h / 2);
       return null;
     }
-    const pad = { l: 52 * fs, r: 16 * fs, t: 16 * fs, b: 40 * fs };
+    const pad = { l: 46 * fs, r: 14 * fs, t: 18 * fs, b: 36 * fs };
     const X0 = pad.l, X1 = w - pad.r, Y0 = pad.t, Y1 = h - pad.b;
 
     // Dominio Y
@@ -65,9 +65,9 @@
     const sy = (v) => Y1 - (v - yt.min) / (yt.max - yt.min) * (Y1 - Y0);
 
     // Rejilla + eje Y
-    ctx.lineWidth = 1; ctx.strokeStyle = t.grid; ctx.fillStyle = t.ink2; ctx.font = F(11); ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 1; ctx.strokeStyle = t.grid; ctx.fillStyle = t.ink2; ctx.font = F(10); ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
     yt.ticks.forEach((v) => { const y = Math.round(sy(v)) + 0.5; ctx.beginPath(); ctx.moveTo(X0, y); ctx.lineTo(X1, y); ctx.stroke(); ctx.fillText(fmtTick(v, yt.step), X0 - 8 * fs, y); });
-    if (spec.yLabel) { ctx.save(); ctx.translate(12 * fs, (Y0 + Y1) / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = 'center'; ctx.font = F(11, 700); ctx.fillText(spec.yLabel, 0, 0); ctx.restore(); }
+    if (spec.yLabel) { ctx.save(); ctx.translate(12 * fs, (Y0 + Y1) / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = 'center'; ctx.font = F(10, 600); ctx.fillText(spec.yLabel, 0, 0); ctx.restore(); }
 
     const layout = { X0, X1, Y0, Y1, sy, kind: spec.kind, items: [] };
 
@@ -78,9 +78,9 @@
       const xt = niceTicks(xMin, xMax, w < 420 ? 4 : 6);
       if (spec.xTight) { xt.min = xMin; xt.max = xMax; }
       const sx = (v) => X0 + (v - xt.min) / (xt.max - xt.min) * (X1 - X0);
-      ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = t.ink2; ctx.font = F(11);
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = t.ink2; ctx.font = F(10);
       xt.ticks.filter((v) => v >= xt.min - 1e-9 && v <= xt.max + 1e-9).forEach((v) => ctx.fillText((spec.xFmt || ((x) => fmtTick(x, xt.step)))(v), sx(v), Y1 + 7 * fs));
-      if (spec.xLabel) { ctx.font = F(11, 700); ctx.fillText(spec.xLabel, (X0 + X1) / 2, Y1 + 22 * fs); }
+      if (spec.xLabel) { ctx.font = F(10, 600); ctx.fillText(spec.xLabel, (X0 + X1) / 2, Y1 + 20 * fs); }
       // Zona sombreada (por ejemplo, zona de rechazo)
       (spec.bands || []).forEach((b) => {
         const xa = sx(Math.max(b.from, xt.min)), xb = sx(Math.min(b.to, xt.max));
@@ -91,16 +91,16 @@
       if (pts.length) {
         const g = ctx.createLinearGradient(0, Y0, 0, Y1);
         g.addColorStop(0, spec.color || t.s1); g.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx.globalAlpha = 0.18; ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(pts[0].px, Y1);
+        ctx.globalAlpha = 0.12; ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(pts[0].px, Y1);
         pts.forEach((p) => ctx.lineTo(p.px, p.py)); ctx.lineTo(pts[pts.length - 1].px, Y1); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
-        ctx.strokeStyle = spec.color || t.s1; ctx.lineWidth = 2.5 * fs; ctx.lineJoin = 'round'; ctx.beginPath();
+        ctx.strokeStyle = spec.color || t.s1; ctx.lineWidth = 1.75 * fs; ctx.lineJoin = 'round'; ctx.beginPath();
         pts.forEach((p, i) => (i ? ctx.lineTo(p.px, p.py) : ctx.moveTo(p.px, p.py))); ctx.stroke();
         if (spec.markers !== false) pts.forEach((p) => {
-          ctx.beginPath(); ctx.arc(p.px, p.py, 4.5 * fs, 0, Math.PI * 2); ctx.fillStyle = t.surface; ctx.fill();
-          ctx.lineWidth = 2.5 * fs; ctx.strokeStyle = p.bad ? t.bad : (spec.color || t.s1); ctx.stroke();
+          ctx.beginPath(); ctx.arc(p.px, p.py, 3.2 * fs, 0, Math.PI * 2); ctx.fillStyle = t.surface; ctx.fill();
+          ctx.lineWidth = 1.75 * fs; ctx.strokeStyle = p.bad ? t.bad : (spec.color || t.s1); ctx.stroke();
         });
         // Etiquetas directas selectivas
-        ctx.font = F(10.5, 700); ctx.fillStyle = t.ink; ctx.textBaseline = 'bottom';
+        ctx.font = F(9.5, 700); ctx.fillStyle = t.ink; ctx.textBaseline = 'bottom';
         // Etiquetas sin superponerse: si dos nodos quedan muy juntos se omite el anterior (se conserva el último).
         const minGap = 16 * fs;
         const show = pts.map((p) => !!p.label);
@@ -129,8 +129,8 @@
     } else {
       const n = spec.bars.length;
       const slot = (X1 - X0) / n;
-      const bw = Math.max(6 * fs, Math.min(46 * fs, slot * 0.62));
-      ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.font = F(n > 12 ? 9.5 : 11, 600);
+      const bw = Math.max(6 * fs, Math.min(28 * fs, slot * 0.46));
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.font = F(n > 12 ? 9 : 10, 600);
       spec.bars.forEach((b, i) => {
         const cx = X0 + slot * (i + 0.5);
         const y = sy(Math.max(0, b.value));
@@ -138,19 +138,19 @@
         ctx.globalAlpha = hover && hover.index !== i ? 0.55 : 1;
         ctx.fillStyle = col; roundRectTop(ctx, cx - bw / 2, y, bw, Y1 - y, 4 * fs); ctx.fill(); ctx.globalAlpha = 1;
         if (n <= 16 || i % 2 === 0) { ctx.fillStyle = t.ink2; ctx.fillText(b.label, cx, Y1 + 7 * fs); }
-        if (spec.valueLabels && n <= 12) { ctx.fillStyle = t.ink; ctx.font = F(10.5, 700); ctx.textBaseline = 'bottom'; ctx.fillText(b.value.toFixed(1), cx, y - 3 * fs); ctx.textBaseline = 'top'; ctx.font = F(n > 12 ? 9.5 : 11, 600); }
+        if (spec.valueLabels && n <= 12) { ctx.fillStyle = t.ink; ctx.font = F(9.5, 700); ctx.textBaseline = 'bottom'; ctx.fillText(b.value.toFixed(1), cx, y - 3 * fs); ctx.textBaseline = 'top'; ctx.font = F(n > 12 ? 9 : 10, 600); }
         layout.items.push({ px: cx, py: y, w: slot, ...b });
       });
-      if (spec.xLabel) { ctx.fillStyle = t.ink2; ctx.font = F(11, 700); ctx.fillText(spec.xLabel, (X0 + X1) / 2, Y1 + 22 * fs); }
+      if (spec.xLabel) { ctx.fillStyle = t.ink2; ctx.font = F(10, 600); ctx.fillText(spec.xLabel, (X0 + X1) / 2, Y1 + 20 * fs); }
     }
 
     // Líneas de referencia (límites)
     (spec.refs || []).forEach((r) => {
       if (!Number.isFinite(r.y)) return;
       const y = Math.round(sy(r.y)) + 0.5;
-      ctx.save(); ctx.setLineDash([6 * fs, 4 * fs]); ctx.strokeStyle = r.color || t.bad; ctx.lineWidth = 1.6 * fs;
+      ctx.save(); ctx.setLineDash([5 * fs, 4 * fs]); ctx.strokeStyle = r.color || t.bad; ctx.lineWidth = 1.1 * fs;
       ctx.beginPath(); ctx.moveTo(X0, y); ctx.lineTo(X1, y); ctx.stroke(); ctx.restore();
-      ctx.font = F(10.5, 800); const tw = ctx.measureText(r.label).width;
+      ctx.font = F(9.5, 700); const tw = ctx.measureText(r.label).width;
       ctx.fillStyle = t.surface; ctx.globalAlpha = 0.9; ctx.fillRect(X1 - tw - 10 * fs, y - 16 * fs, tw + 8 * fs, 14 * fs); ctx.globalAlpha = 1;
       ctx.fillStyle = r.color || t.bad; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.fillText(r.label, X1 - 6 * fs, y - 3 * fs);
     });
@@ -162,7 +162,7 @@
     if (hover && spec.kind === 'line') {
       const p = hover.item; ctx.save(); ctx.strokeStyle = t.ink2; ctx.globalAlpha = 0.5; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(Math.round(p.px) + 0.5, Y0); ctx.lineTo(Math.round(p.px) + 0.5, Y1); ctx.stroke(); ctx.restore();
-      ctx.beginPath(); ctx.arc(p.px, p.py, 7, 0, Math.PI * 2); ctx.fillStyle = spec.color || t.s1; ctx.fill();
+      ctx.beginPath(); ctx.arc(p.px, p.py, 5, 0, Math.PI * 2); ctx.fillStyle = spec.color || t.s1; ctx.fill();
       ctx.lineWidth = 2; ctx.strokeStyle = t.surface; ctx.stroke();
     }
     return layout;

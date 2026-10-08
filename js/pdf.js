@@ -208,16 +208,16 @@
     y = 24;
     y = sectionTitle('Gráficas', y);
     const Charts = root.Charts;
-    const cw = (W - 2 * M - 6) / 2, ch = 112;
+    const cw = (W - 2 * M - 6) / 2, ch = 100;
     const drawChart = (spec, x, yy, w, h, title, sub) => {
       doc.setFillColor(...C.white); doc.setDrawColor(...C.line); doc.setLineWidth(0.25); doc.roundedRect(x, yy, w, h, 2.2, 2.2, 'FD');
       hGrad(doc, x + 2, yy, w - 4, 1.2, [[0, accent2], [1, accent]], 30);
       doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...C.ink); doc.text(T(title), x + 4, yy + 7);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(7.2); doc.setTextColor(...C.muted); doc.text(T(sub), x + 4, yy + 11.5);
       if (spec.empty) { doc.setFontSize(8.5); doc.text(T(spec.emptyText || 'Sin datos'), x + w / 2, yy + h / 2, { align: 'center' }); return; }
-      const pw = w - 6, ph = h - 16, pxPerMm = 3.2;
+      const pw = w - 8, ph = h - 18, pxPerMm = 3.9;
       const img = Charts.toPNG({ ...spec, fontScale: 1 }, pw * pxPerMm, ph * pxPerMm, 3.6);
-      doc.addImage(img, 'PNG', x + 3, yy + 14, pw, ph, undefined, 'FAST');
+      doc.addImage(img, 'PNG', x + 4, yy + 15, pw, ph, undefined, 'FAST');
     };
     drawChart(d.specs.profile, M, y, cw, ch, 'Presión en cada nodo', 'Desde la fuente hasta el punto final de la red');
     drawChart(d.specs.vel, M + cw + 6, y, cw, ch, 'Velocidad por tramo', 'Rojo: supera el límite · ámbar: >= 80 % del límite');

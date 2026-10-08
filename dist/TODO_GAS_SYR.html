@@ -198,10 +198,10 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
 .mini-btn { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 10px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2); transition: .2s; }
 .mini-btn:hover { color: var(--cyan); border-color: var(--cyan); }
 .mini-btn.del:hover { color: var(--bad); border-color: var(--bad); background: var(--bad-bg); }
-.res-chip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-height: 44px; padding: 8px 10px; border-radius: 10px; background: var(--surface); border: 1px dashed var(--line-2); font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.res-chip { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 3px; min-height: 44px; padding: 6px 8px; border-radius: 10px; background: var(--surface); border: 1px dashed var(--line-2); font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .res-chip b { color: var(--ink); }
 @media (min-width: 1100px) {
-  .seg-head, .seg-row { grid-template-columns: 44px 72px 72px minmax(80px, 1fr) minmax(80px, 1fr) minmax(150px, 1.6fr) minmax(130px, 1.4fr) 84px minmax(170px, 1.5fr) 90px; gap: 8px; align-items: center; }
+  .seg-head, .seg-row { grid-template-columns: 40px 64px 64px minmax(76px, .9fr) minmax(76px, .9fr) minmax(170px, 1.7fr) minmax(170px, 1.7fr) 70px minmax(132px, 1.2fr) 84px; gap: 8px; align-items: center; }
   .seg-head { display: grid; padding: 10px 12px; border-radius: 12px 12px 0 0; background: var(--grad); color: #fff; font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; line-height: 1.15; text-align: center; }
   .seg-head i { font-style: normal; font-weight: 600; opacity: .85; text-transform: none; }
   .seg-row { margin: 0; padding: 8px 12px; border-radius: 0; border-width: 0 1px 1px; border-left-width: 4px; background: var(--surface); animation: none; }
@@ -212,9 +212,9 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
   .seg-row .cell label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .seg-row .c-mat, .seg-row .c-dn, .seg-row .c-res { grid-column: auto; }
   .seg-row .c-act { position: static; justify-content: center; }
-  .res-chip { min-height: 40px; padding: 4px 8px; font-size: 12px; gap: 2px 8px; }
-  .seg-row input, .seg-row select { min-height: 40px; padding: 8px 9px; }
-  .seg-row select { padding-right: 28px; background-position: right 7px center; }
+  .res-chip { min-height: 40px; padding: 4px 6px; font-size: 11.5px; gap: 2px; }
+  .seg-row input, .seg-row select { min-height: 40px; padding: 8px 6px; }
+  .seg-row select { padding-right: 24px; background-position: right 6px center; background-size: 14px; }
 }
 @media (min-width: 560px) and (max-width: 1099px) {
   .seg-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -343,6 +343,20 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
   .table-scroll { overflow: visible; }
 }
 @media (max-width: 430px) { .export-grid { grid-template-columns: 1fr; } .xbtn { min-height: 64px; } }
+
+/* ---------------- Editor: valores centrados y alineados ---------------- */
+.seg-row input, .seg-row select { text-align: center; text-align-last: center; font-variant-numeric: tabular-nums; }
+.seg-row select { text-overflow: ellipsis; }
+.res-chip .rc-vals { display: flex; justify-content: center; gap: 10px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.res-chip .rc-why { font-size: 11px; line-height: 1.2; color: var(--bad); font-weight: 700; }
+.res-chip .st { font-size: 11px; padding: 2px 8px; }
+.seg-row .c-act { gap: 6px; }
+@media (min-width: 1100px) {
+  .seg-row .mini-btn { width: 34px; height: 34px; }
+  .seg-row .c-n .num { min-width: 28px; height: 28px; }
+}
+/* Tabla de resultados: todo centrado y con el mismo ancho de números */
+.res-table td, .res-table th { text-align: center; vertical-align: middle; }
 
 </style>
 <script>
@@ -587,7 +601,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     <div>
       <p><b>TODO GAS SYR S.A.S.</b> · NIT 901.126.243-3 · Colombia</p>
       <p>Diseño y cálculos: Luis Silvestre · Ingeniero MP 041122-0809747 BYC — COPNIA</p>
-      <p>Tel. 322 361 8360 · 320 948 5534 · © 2026 · <span class="app-version">Versión 2.5</span></p>
+      <p>Tel. 322 361 8360 · 320 948 5534 · © 2026 · <span class="app-version">Versión 2.6</span></p>
     </div>
   </div>
 </footer>
@@ -630,7 +644,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
   /* Catálogo de tuberías — diámetros según norma de fabricación. */
   const PIPES = {
     PEALPE: {
-      label: 'PE-AL-PE (multicapa)',
+      label: 'PE-AL-PE (multicapa)', short: 'PE-AL-PE',
       norma: 'ISO 17484 / NTC 4579',
       sizes: [
         { dn: '1216', label: '1216 · 1/2" (Ø16 mm)', de: 16, di: 12 },
@@ -641,7 +655,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
       ]
     },
     PE100: {
-      label: 'Polietileno PE100 IPS SDR 11',
+      label: 'Polietileno PE100 IPS SDR 11', short: 'PE100 · IPS',
       norma: 'ASTM D2513 / NTC 1746',
       sizes: [
         { dn: '1/2', label: '1/2" IPS', de: 21.3, di: 17.4 },
@@ -655,7 +669,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
       ]
     },
     PE100M: {
-      label: 'Polietileno PE100 métrico SDR 11',
+      label: 'Polietileno PE100 métrico SDR 11', short: 'PE100 · métrico',
       norma: 'ISO 4437 / NTC 1746',
       sizes: [
         { dn: '20', label: 'Ø20 mm SDR11', de: 20, di: 14.0 },
@@ -669,7 +683,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
       ]
     },
     PE80: {
-      label: 'Polietileno PE80',
+      label: 'Polietileno PE80', short: 'PE80',
       norma: 'ASTM D2513',
       sizes: [
         { dn: '1/2 CTS', label: '1/2" CTS', de: 15.9, di: 11.4 },
@@ -680,7 +694,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
       ]
     },
     ACERO: {
-      label: 'Acero al carbono Sch 40',
+      label: 'Acero al carbono Sch 40', short: 'Acero Sch 40',
       norma: 'ASTM A53 / A106',
       sizes: [
         { dn: '1/2', label: '1/2" Sch40', de: 21.3, di: 15.8 },
@@ -694,7 +708,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
       ]
     },
     GALV: {
-      label: 'Acero galvanizado Sch 40',
+      label: 'Acero galvanizado Sch 40', short: 'Galvanizado',
       norma: 'ASTM A53 / NTC 3470',
       sizes: [
         { dn: '1/2', label: '1/2" Sch40', de: 21.3, di: 15.8 },
@@ -706,7 +720,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
       ]
     },
     COBRE: {
-      label: 'Cobre tipo L',
+      label: 'Cobre tipo L', short: 'Cobre tipo L',
       norma: 'ASTM B88',
       sizes: [
         { dn: '3/8', label: '3/8" tipo L', de: 12.7, di: 10.9 },
@@ -719,7 +733,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
         { dn: '2', label: '2" tipo L', de: 54.0, di: 50.4 }
       ]
     },
-    CUSTOM: { label: 'Personalizado (Ø interno manual)', norma: '—', sizes: [] }
+    CUSTOM: { label: 'Personalizado (Ø interno manual)', short: 'Manual (Ø interno)', norma: '—', sizes: [] }
   };
 
   /* Municipios de Colombia: altitud (m s. n. m.). La presión atmosférica se calcula con la atmósfera estándar ISA. */
@@ -1051,7 +1065,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
       ctx.fillText(spec && spec.emptyText ? spec.emptyText : 'Sin datos para graficar', w / 2, h / 2);
       return null;
     }
-    const pad = { l: 52 * fs, r: 16 * fs, t: 16 * fs, b: 40 * fs };
+    const pad = { l: 46 * fs, r: 14 * fs, t: 18 * fs, b: 36 * fs };
     const X0 = pad.l, X1 = w - pad.r, Y0 = pad.t, Y1 = h - pad.b;
 
     // Dominio Y
@@ -1066,9 +1080,9 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     const sy = (v) => Y1 - (v - yt.min) / (yt.max - yt.min) * (Y1 - Y0);
 
     // Rejilla + eje Y
-    ctx.lineWidth = 1; ctx.strokeStyle = t.grid; ctx.fillStyle = t.ink2; ctx.font = F(11); ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 1; ctx.strokeStyle = t.grid; ctx.fillStyle = t.ink2; ctx.font = F(10); ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
     yt.ticks.forEach((v) => { const y = Math.round(sy(v)) + 0.5; ctx.beginPath(); ctx.moveTo(X0, y); ctx.lineTo(X1, y); ctx.stroke(); ctx.fillText(fmtTick(v, yt.step), X0 - 8 * fs, y); });
-    if (spec.yLabel) { ctx.save(); ctx.translate(12 * fs, (Y0 + Y1) / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = 'center'; ctx.font = F(11, 700); ctx.fillText(spec.yLabel, 0, 0); ctx.restore(); }
+    if (spec.yLabel) { ctx.save(); ctx.translate(12 * fs, (Y0 + Y1) / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = 'center'; ctx.font = F(10, 600); ctx.fillText(spec.yLabel, 0, 0); ctx.restore(); }
 
     const layout = { X0, X1, Y0, Y1, sy, kind: spec.kind, items: [] };
 
@@ -1079,9 +1093,9 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
       const xt = niceTicks(xMin, xMax, w < 420 ? 4 : 6);
       if (spec.xTight) { xt.min = xMin; xt.max = xMax; }
       const sx = (v) => X0 + (v - xt.min) / (xt.max - xt.min) * (X1 - X0);
-      ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = t.ink2; ctx.font = F(11);
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = t.ink2; ctx.font = F(10);
       xt.ticks.filter((v) => v >= xt.min - 1e-9 && v <= xt.max + 1e-9).forEach((v) => ctx.fillText((spec.xFmt || ((x) => fmtTick(x, xt.step)))(v), sx(v), Y1 + 7 * fs));
-      if (spec.xLabel) { ctx.font = F(11, 700); ctx.fillText(spec.xLabel, (X0 + X1) / 2, Y1 + 22 * fs); }
+      if (spec.xLabel) { ctx.font = F(10, 600); ctx.fillText(spec.xLabel, (X0 + X1) / 2, Y1 + 20 * fs); }
       // Zona sombreada (por ejemplo, zona de rechazo)
       (spec.bands || []).forEach((b) => {
         const xa = sx(Math.max(b.from, xt.min)), xb = sx(Math.min(b.to, xt.max));
@@ -1092,16 +1106,16 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
       if (pts.length) {
         const g = ctx.createLinearGradient(0, Y0, 0, Y1);
         g.addColorStop(0, spec.color || t.s1); g.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx.globalAlpha = 0.18; ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(pts[0].px, Y1);
+        ctx.globalAlpha = 0.12; ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(pts[0].px, Y1);
         pts.forEach((p) => ctx.lineTo(p.px, p.py)); ctx.lineTo(pts[pts.length - 1].px, Y1); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
-        ctx.strokeStyle = spec.color || t.s1; ctx.lineWidth = 2.5 * fs; ctx.lineJoin = 'round'; ctx.beginPath();
+        ctx.strokeStyle = spec.color || t.s1; ctx.lineWidth = 1.75 * fs; ctx.lineJoin = 'round'; ctx.beginPath();
         pts.forEach((p, i) => (i ? ctx.lineTo(p.px, p.py) : ctx.moveTo(p.px, p.py))); ctx.stroke();
         if (spec.markers !== false) pts.forEach((p) => {
-          ctx.beginPath(); ctx.arc(p.px, p.py, 4.5 * fs, 0, Math.PI * 2); ctx.fillStyle = t.surface; ctx.fill();
-          ctx.lineWidth = 2.5 * fs; ctx.strokeStyle = p.bad ? t.bad : (spec.color || t.s1); ctx.stroke();
+          ctx.beginPath(); ctx.arc(p.px, p.py, 3.2 * fs, 0, Math.PI * 2); ctx.fillStyle = t.surface; ctx.fill();
+          ctx.lineWidth = 1.75 * fs; ctx.strokeStyle = p.bad ? t.bad : (spec.color || t.s1); ctx.stroke();
         });
         // Etiquetas directas selectivas
-        ctx.font = F(10.5, 700); ctx.fillStyle = t.ink; ctx.textBaseline = 'bottom';
+        ctx.font = F(9.5, 700); ctx.fillStyle = t.ink; ctx.textBaseline = 'bottom';
         // Etiquetas sin superponerse: si dos nodos quedan muy juntos se omite el anterior (se conserva el último).
         const minGap = 16 * fs;
         const show = pts.map((p) => !!p.label);
@@ -1130,8 +1144,8 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     } else {
       const n = spec.bars.length;
       const slot = (X1 - X0) / n;
-      const bw = Math.max(6 * fs, Math.min(46 * fs, slot * 0.62));
-      ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.font = F(n > 12 ? 9.5 : 11, 600);
+      const bw = Math.max(6 * fs, Math.min(28 * fs, slot * 0.46));
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.font = F(n > 12 ? 9 : 10, 600);
       spec.bars.forEach((b, i) => {
         const cx = X0 + slot * (i + 0.5);
         const y = sy(Math.max(0, b.value));
@@ -1139,19 +1153,19 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
         ctx.globalAlpha = hover && hover.index !== i ? 0.55 : 1;
         ctx.fillStyle = col; roundRectTop(ctx, cx - bw / 2, y, bw, Y1 - y, 4 * fs); ctx.fill(); ctx.globalAlpha = 1;
         if (n <= 16 || i % 2 === 0) { ctx.fillStyle = t.ink2; ctx.fillText(b.label, cx, Y1 + 7 * fs); }
-        if (spec.valueLabels && n <= 12) { ctx.fillStyle = t.ink; ctx.font = F(10.5, 700); ctx.textBaseline = 'bottom'; ctx.fillText(b.value.toFixed(1), cx, y - 3 * fs); ctx.textBaseline = 'top'; ctx.font = F(n > 12 ? 9.5 : 11, 600); }
+        if (spec.valueLabels && n <= 12) { ctx.fillStyle = t.ink; ctx.font = F(9.5, 700); ctx.textBaseline = 'bottom'; ctx.fillText(b.value.toFixed(1), cx, y - 3 * fs); ctx.textBaseline = 'top'; ctx.font = F(n > 12 ? 9 : 10, 600); }
         layout.items.push({ px: cx, py: y, w: slot, ...b });
       });
-      if (spec.xLabel) { ctx.fillStyle = t.ink2; ctx.font = F(11, 700); ctx.fillText(spec.xLabel, (X0 + X1) / 2, Y1 + 22 * fs); }
+      if (spec.xLabel) { ctx.fillStyle = t.ink2; ctx.font = F(10, 600); ctx.fillText(spec.xLabel, (X0 + X1) / 2, Y1 + 20 * fs); }
     }
 
     // Líneas de referencia (límites)
     (spec.refs || []).forEach((r) => {
       if (!Number.isFinite(r.y)) return;
       const y = Math.round(sy(r.y)) + 0.5;
-      ctx.save(); ctx.setLineDash([6 * fs, 4 * fs]); ctx.strokeStyle = r.color || t.bad; ctx.lineWidth = 1.6 * fs;
+      ctx.save(); ctx.setLineDash([5 * fs, 4 * fs]); ctx.strokeStyle = r.color || t.bad; ctx.lineWidth = 1.1 * fs;
       ctx.beginPath(); ctx.moveTo(X0, y); ctx.lineTo(X1, y); ctx.stroke(); ctx.restore();
-      ctx.font = F(10.5, 800); const tw = ctx.measureText(r.label).width;
+      ctx.font = F(9.5, 700); const tw = ctx.measureText(r.label).width;
       ctx.fillStyle = t.surface; ctx.globalAlpha = 0.9; ctx.fillRect(X1 - tw - 10 * fs, y - 16 * fs, tw + 8 * fs, 14 * fs); ctx.globalAlpha = 1;
       ctx.fillStyle = r.color || t.bad; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.fillText(r.label, X1 - 6 * fs, y - 3 * fs);
     });
@@ -1163,7 +1177,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     if (hover && spec.kind === 'line') {
       const p = hover.item; ctx.save(); ctx.strokeStyle = t.ink2; ctx.globalAlpha = 0.5; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(Math.round(p.px) + 0.5, Y0); ctx.lineTo(Math.round(p.px) + 0.5, Y1); ctx.stroke(); ctx.restore();
-      ctx.beginPath(); ctx.arc(p.px, p.py, 7, 0, Math.PI * 2); ctx.fillStyle = spec.color || t.s1; ctx.fill();
+      ctx.beginPath(); ctx.arc(p.px, p.py, 5, 0, Math.PI * 2); ctx.fillStyle = spec.color || t.s1; ctx.fill();
       ctx.lineWidth = 2; ctx.strokeStyle = t.surface; ctx.stroke();
     }
     return layout;
@@ -1427,16 +1441,16 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     y = 24;
     y = sectionTitle('Gráficas', y);
     const Charts = root.Charts;
-    const cw = (W - 2 * M - 6) / 2, ch = 112;
+    const cw = (W - 2 * M - 6) / 2, ch = 100;
     const drawChart = (spec, x, yy, w, h, title, sub) => {
       doc.setFillColor(...C.white); doc.setDrawColor(...C.line); doc.setLineWidth(0.25); doc.roundedRect(x, yy, w, h, 2.2, 2.2, 'FD');
       hGrad(doc, x + 2, yy, w - 4, 1.2, [[0, accent2], [1, accent]], 30);
       doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...C.ink); doc.text(T(title), x + 4, yy + 7);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(7.2); doc.setTextColor(...C.muted); doc.text(T(sub), x + 4, yy + 11.5);
       if (spec.empty) { doc.setFontSize(8.5); doc.text(T(spec.emptyText || 'Sin datos'), x + w / 2, yy + h / 2, { align: 'center' }); return; }
-      const pw = w - 6, ph = h - 16, pxPerMm = 3.2;
+      const pw = w - 8, ph = h - 18, pxPerMm = 3.9;
       const img = Charts.toPNG({ ...spec, fontScale: 1 }, pw * pxPerMm, ph * pxPerMm, 3.6);
-      doc.addImage(img, 'PNG', x + 3, yy + 14, pw, ph, undefined, 'FAST');
+      doc.addImage(img, 'PNG', x + 4, yy + 15, pw, ph, undefined, 'FAST');
     };
     drawChart(d.specs.profile, M, y, cw, ch, 'Presión en cada nodo', 'Desde la fuente hasta el punto final de la red');
     drawChart(d.specs.vel, M + cw + 6, y, cw, ch, 'Velocidad por tramo', 'Rojo: supera el límite · ámbar: >= 80 % del límite');
@@ -1648,7 +1662,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     if (!cat || !cat.sizes.length) return '<option value="">Ø interno manual →</option>';
     return cat.sizes.map((s) => `<option value="${esc(s.dn)}"${s.dn === dn ? ' selected' : ''}>${esc(s.label)}</option>`).join('');
   }
-  const matOptions = (mat) => Object.entries(E.PIPES).map(([k, p]) => `<option value="${k}"${k === mat ? ' selected' : ''}>${esc(p.label)}</option>`).join('');
+  const matOptions = (mat) => Object.entries(E.PIPES).map(([k, p]) => `<option value="${k}" title="${esc(p.label)}"${k === mat ? ' selected' : ''}>${esc(p.short || p.label)}</option>`).join('');
   function ensureDn(seg) {
     const cat = E.PIPES[seg.mat];
     if (cat && cat.sizes.length && !cat.sizes.some((s) => s.dn === seg.dn)) {
@@ -1667,7 +1681,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
       <div class="cell c-fin"><label for="fin${i}">Fin</label><input id="fin${i}" data-f="fin" value="${esc(s.fin)}" maxlength="4" autocapitalize="characters" autocomplete="off"></div>
       <div class="cell c-q"><label for="q${i}">Caudal (m³/h)</label><input id="q${i}" data-f="q" value="${esc(s.q)}" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off"></div>
       <div class="cell c-l"><label for="l${i}">Longitud (m)</label><input id="l${i}" data-f="l" value="${esc(s.l)}" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off"></div>
-      <div class="cell c-mat"><label for="m${i}">Material</label><select id="m${i}" data-f="mat">${matOptions(s.mat)}</select></div>
+      <div class="cell c-mat"><label for="m${i}">Material</label><select id="m${i}" data-f="mat" title="${esc((E.PIPES[s.mat] || {}).label || '')}">${matOptions(s.mat)}</select></div>
       <div class="cell c-dn"><label for="d${i}">Diámetro</label><select id="d${i}" data-f="dn"${custom ? ' disabled' : ''}>${dnOptions(s.mat, s.dn)}</select></div>
       <div class="cell c-di"><label for="di${i}">Ø interno (mm)</label><input id="di${i}" data-f="di" value="${esc(s.di)}" type="text" inputmode="decimal"${custom ? '' : ' readonly tabindex="-1"'} placeholder="mm"></div>
       <div class="cell c-res"><label>Resultado</label><div class="res-chip">—</div></div>
@@ -1718,7 +1732,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
       const el = e.target, row = el.closest('.seg-row'); if (!row) return;
       const i = +row.dataset.i, s = M().segs[i];
       if (el.dataset.f === 'mat') {
-        s.mat = el.value; ensureDn(s);
+        s.mat = el.value; ensureDn(s); el.title = E.PIPES[s.mat].label;
         const d = row.querySelector('[data-f="dn"]'); d.innerHTML = dnOptions(s.mat, s.dn); d.disabled = s.mat === 'CUSTOM';
         const di = row.querySelector('[data-f="di"]'); di.value = s.di; di.readOnly = s.mat !== 'CUSTOM'; di.tabIndex = s.mat === 'CUSTOM' ? 0 : -1;
         if (s.mat === 'CUSTOM') di.focus();
@@ -1851,7 +1865,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
       row.classList.toggle('ok', !!(r.valid && r.ok)); row.classList.toggle('bad', !!(r.valid && !r.ok));
       const chip = row.querySelector('.res-chip');
       chip.innerHTML = r.valid
-        ? `${statusChip(r, true)}<span>Pf <b>${fmt(r.pf, 2)}</b></span><span>V <b>${fmt(r.v, 2)}</b></span>`
+        ? `${statusChip(r)}<span class="rc-vals"><span>Pf <b>${fmt(r.pf, 2)}</b></span><span>V <b>${fmt(r.v, 2)}</b></span></span>${r.ok ? '' : `<span class="rc-why">${esc(why(r))}</span>`}`
         : statusChip(r);
     });
   }

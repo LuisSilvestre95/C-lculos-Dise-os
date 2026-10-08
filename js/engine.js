@@ -24,7 +24,7 @@
   /* Catálogo de tuberías — diámetros según norma de fabricación. */
   const PIPES = {
     PEALPE: {
-      label: 'PE-AL-PE (multicapa)',
+      label: 'PE-AL-PE (multicapa)', short: 'PE-AL-PE',
       norma: 'ISO 17484 / NTC 4579',
       sizes: [
         { dn: '1216', label: '1216 · 1/2" (Ø16 mm)', de: 16, di: 12 },
@@ -35,7 +35,7 @@
       ]
     },
     PE100: {
-      label: 'Polietileno PE100 IPS SDR 11',
+      label: 'Polietileno PE100 IPS SDR 11', short: 'PE100 · IPS',
       norma: 'ASTM D2513 / NTC 1746',
       sizes: [
         { dn: '1/2', label: '1/2" IPS', de: 21.3, di: 17.4 },
@@ -49,7 +49,7 @@
       ]
     },
     PE100M: {
-      label: 'Polietileno PE100 métrico SDR 11',
+      label: 'Polietileno PE100 métrico SDR 11', short: 'PE100 · métrico',
       norma: 'ISO 4437 / NTC 1746',
       sizes: [
         { dn: '20', label: 'Ø20 mm SDR11', de: 20, di: 14.0 },
@@ -63,7 +63,7 @@
       ]
     },
     PE80: {
-      label: 'Polietileno PE80',
+      label: 'Polietileno PE80', short: 'PE80',
       norma: 'ASTM D2513',
       sizes: [
         { dn: '1/2 CTS', label: '1/2" CTS', de: 15.9, di: 11.4 },
@@ -74,7 +74,7 @@
       ]
     },
     ACERO: {
-      label: 'Acero al carbono Sch 40',
+      label: 'Acero al carbono Sch 40', short: 'Acero Sch 40',
       norma: 'ASTM A53 / A106',
       sizes: [
         { dn: '1/2', label: '1/2" Sch40', de: 21.3, di: 15.8 },
@@ -88,7 +88,7 @@
       ]
     },
     GALV: {
-      label: 'Acero galvanizado Sch 40',
+      label: 'Acero galvanizado Sch 40', short: 'Galvanizado',
       norma: 'ASTM A53 / NTC 3470',
       sizes: [
         { dn: '1/2', label: '1/2" Sch40', de: 21.3, di: 15.8 },
@@ -100,7 +100,7 @@
       ]
     },
     COBRE: {
-      label: 'Cobre tipo L',
+      label: 'Cobre tipo L', short: 'Cobre tipo L',
       norma: 'ASTM B88',
       sizes: [
         { dn: '3/8', label: '3/8" tipo L', de: 12.7, di: 10.9 },
@@ -113,7 +113,7 @@
         { dn: '2', label: '2" tipo L', de: 54.0, di: 50.4 }
       ]
     },
-    CUSTOM: { label: 'Personalizado (Ø interno manual)', norma: '—', sizes: [] }
+    CUSTOM: { label: 'Personalizado (Ø interno manual)', short: 'Manual (Ø interno)', norma: '—', sizes: [] }
   };
 
   /* Municipios de Colombia: altitud (m s. n. m.). La presión atmosférica se calcula con la atmósfera estándar ISA. */
