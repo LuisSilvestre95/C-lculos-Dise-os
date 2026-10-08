@@ -101,10 +101,19 @@
         });
         // Etiquetas directas selectivas
         ctx.font = F(10.5, 700); ctx.fillStyle = t.ink; ctx.textBaseline = 'bottom';
+        // Etiquetas sin superponerse: si dos nodos quedan muy juntos se omite el anterior (se conserva el último).
+        const minGap = 16 * fs;
+        const show = pts.map((p) => !!p.label);
+        for (let i = pts.length - 2; i >= 0; i--) {
+          let j = i + 1; while (j < pts.length && !show[j]) j++;
+          if (j < pts.length && show[i] && Math.hypot(pts[j].px - pts[i].px, pts[j].py - pts[i].py) < minGap) show[i] = i === 0; // la fuente siempre se nombra
+          if (i === 0 && show[0] && j < pts.length && Math.hypot(pts[j].px - pts[0].px, pts[j].py - pts[0].py) < minGap) show[j] = j === pts.length - 1 ? true : false;
+        }
         pts.forEach((p, i) => {
-          if (!p.label || (pts.length > 10 && i % Math.ceil(pts.length / 10) !== 0 && i !== pts.length - 1)) return;
+          if (!show[i]) return;
+          const near0 = i > 0 && show[0] && Math.abs(p.px - pts[0].px) < minGap;
           ctx.textAlign = i === 0 ? 'left' : i === pts.length - 1 ? 'right' : 'center';
-          ctx.fillText(p.label, p.px, p.py - 8 * fs);
+          ctx.fillText(p.label, p.px + (near0 ? 10 * fs : 0), p.py - 8 * fs);
         });
         layout.items = pts;
       }

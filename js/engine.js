@@ -27,11 +27,11 @@
       label: 'PE-AL-PE (multicapa)',
       norma: 'ISO 17484 / NTC 4579',
       sizes: [
-        { dn: '1216', label: '1216 · Ø16 mm', de: 16, di: 12 },
-        { dn: '1418', label: '1418 · Ø18 mm', de: 18, di: 14 },
-        { dn: '1620', label: '1620 · Ø20 mm', de: 20, di: 16 },
-        { dn: '2025', label: '2025 · Ø25 mm', de: 25, di: 20 },
-        { dn: '2632', label: '2632 · Ø32 mm', de: 32, di: 26 }
+        { dn: '1216', label: '1216 · 1/2" (Ø16 mm)', de: 16, di: 12 },
+        { dn: '1418', label: '1418 · 5/8" (Ø18 mm)', de: 18, di: 14 },
+        { dn: '1620', label: '1620 · 3/4" (Ø20 mm)', de: 20, di: 16 },
+        { dn: '2025', label: '2025 · 1" (Ø25 mm)', de: 25, di: 20 },
+        { dn: '2632', label: '2632 · 1 1/4" (Ø32 mm)', de: 32, di: 26 }
       ]
     },
     PE100: {
@@ -292,7 +292,8 @@
     segs.forEach((s) => outflow.set(s.ini, (outflow.get(s.ini) || 0) + s.qBase));
     segs.forEach((s) => {
       const out = outflow.get(s.fin) || 0;
-      if (out - s.qBase > 1e-6) warnings.push(`Nodo ${s.fin}: sale ${out.toFixed(2)} m³/h pero entran solo ${s.qBase.toFixed(2)} m³/h por el tramo ${s.ini}-${s.fin}.`);
+      // Tolerancia de redondeo: 0.02 m³/h o 1 % del caudal del tramo (lo que sea mayor).
+      if (out - s.qBase > Math.max(0.02, s.qBase * 0.01)) warnings.push(`Nodo ${s.fin}: sale ${out.toFixed(2)} m³/h pero entran solo ${s.qBase.toFixed(2)} m³/h por el tramo ${s.ini}-${s.fin}.`);
     });
 
     const valid = rows.filter((r) => r.valid);

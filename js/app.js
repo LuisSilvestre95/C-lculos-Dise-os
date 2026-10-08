@@ -17,11 +17,13 @@
   const DEFAULT_STATE = () => ({
     v: 2, mode: 'baja', city: String(defaultCity), altitude: E.CITIES[defaultCity].alt,
     patm: +E.patmFromAltitude(E.CITIES[defaultCity].alt).toFixed(1), gas: 'GN', G: 0.67, factorLE: 1.2,
-    client: {}, baja: blankMode('baja'), media: blankMode('media')
+    client: {}, pcs: {}, baja: blankMode('baja'), media: blankMode('media')
   });
-  let state = load() || DEFAULT_STATE();
+  const str = (v, n) => String(v ?? '').slice(0, n);
+  const MAX_SEGS = 500;
   let seq = 1;
   const newId = () => 's' + Date.now().toString(36) + (seq++);
+  let state = load() || DEFAULT_STATE();
 
   function load() {
     try {
@@ -33,18 +35,25 @@
   }
   function normalize(s) {
     const d = DEFAULT_STATE();
-    const out = { ...d, ...s, client: { ...(s.client || {}) } };
+    const out = { ...d, client: {} };
+    ['mode', 'city', 'altitude', 'patm', 'gas', 'G', 'factorLE', 'pcs'].forEach((k) => { if (s[k] != null) out[k] = s[k]; });
+    // Solo se aceptan los campos conocidos y con longitud limitada (datos guardados o archivos externos).
+    ['name', 'id', 'phone', 'address', 'city', 'ref'].forEach((k) => { if (s.client && s.client[k] != null) out.client[k] = str(s.client[k], 160); });
+    ['altitude', 'patm', 'G', 'factorLE'].forEach((k) => { out[k] = str(out[k], 20); });
+    out.city = str(out.city, 10); out.gas = str(out.gas, 10);
+    out.pcs = out.pcs && typeof out.pcs === 'object' ? Object.fromEntries(Object.entries(out.pcs).filter(([k, v]) => E.GASES[k] && E.num(v) > 0).map(([k, v]) => [k, E.num(v)])) : {};
     ['baja', 'media'].forEach((m) => {
-      out[m] = { ...d[m], ...(s[m] || {}) };
-      out[m].segs = (Array.isArray(out[m].segs) ? out[m].segs : []).map((g) => ({
-        id: g.id || newId(), ini: String(g.ini || 'A').toUpperCase().slice(0, 4), fin: String(g.fin || 'B').toUpperCase().slice(0, 4),
-        q: g.q ?? '', l: g.l ?? '', mat: E.PIPES[g.mat] ? g.mat : 'PEALPE', dn: g.dn ?? '', di: g.di ?? ''
+      const src = s[m] || {};
+      out[m] = { ...d[m] };
+      ['pi', 'pmin', 'vmax', 'maxLossPct'].forEach((k) => { if (src[k] != null) out[m][k] = str(src[k], 20); });
+      out[m].segs = (Array.isArray(src.segs) ? src.segs.slice(0, MAX_SEGS) : []).filter((g) => g && typeof g === 'object').map((g) => ({
+        id: newId(), ini: str(g.ini || 'A', 4).toUpperCase().replace(/[^A-Z0-9]/g, ''), fin: str(g.fin || 'B', 4).toUpperCase().replace(/[^A-Z0-9]/g, ''),
+        q: str(g.q, 20), l: str(g.l, 20), mat: E.PIPES[g.mat] ? g.mat : 'PEALPE', dn: str(g.dn, 12), di: str(g.di, 20)
       }));
     });
     out.mode = out.mode === 'media' ? 'media' : 'baja';
     if (!E.GASES[out.gas]) out.gas = 'OTRO';
     if (out.city !== 'custom' && !E.CITIES[+out.city]) out.city = 'custom';
-    delete out.demand;
     return out;
   }
   let saveTimer = 0;
@@ -265,6 +274,7 @@
       }
     });
     $('#addBtn').addEventListener('click', () => {
+      if (M().segs.length >= MAX_SEGS) { toast(`Máximo ${MAX_SEGS} tramos por red`, 'bad'); return; }
       M().segs.push(newSegment()); renderSegments(); changed();
       const i = M().segs.length - 1; const q = $(`#q${i}`);
       if (q) { q.focus({ preventScroll: true }); q.closest('.seg-row').scrollIntoView({ behavior: 'smooth', block: 'center' }); }
@@ -464,24 +474,26 @@
 
   function flowCalculator() {
     const gas = E.GASES[state.gas] || E.GASES.GN;
+    const pcs0 = (state.pcs && state.pcs[state.gas]) || gas.pcs;
     const segOpts = M().segs.map((s, i) => `<option value="${i}">Tramo ${i + 1}: ${esc(s.ini)} → ${esc(s.fin)}</option>`).join('');
     modal({
       title: 'Caudal por potencia de gasodomésticos',
       body: `<p>Q = Potencia / PCS. Sume la potencia nominal de los equipos que alimenta el tramo.</p>
         <div class="fields"><div class="field"><label for="fcP">Potencia</label><input id="fcP" type="text" inputmode="decimal" placeholder="Ej. 24"></div>
         <div class="field"><label for="fcU">Unidad</label><select id="fcU"><option>kW</option><option>BTU/h</option><option>kcal/h</option><option>MJ/h</option></select></div>
-        <div class="field"><label for="fcS">PCS (kWh/m³)</label><input id="fcS" type="text" inputmode="decimal" value="${gas.pcs}"></div>
+        <div class="field"><label for="fcS">PCS (kWh/m³)</label><input id="fcS" type="text" inputmode="decimal" value="${pcs0}"></div>
         <div class="field"><label for="fcT">Asignar a</label><select id="fcT">${segOpts || '<option value="">(sin tramos)</option>'}</select></div></div>
         <div class="big-result" id="fcR">— m³/h</div>`,
       actions: [{ label: 'Cerrar' }, {
         label: 'Asignar caudal', primary: true, onClick: () => {
           const q = calcQ(); const i = $('#fcT').value;
           if (!(q > 0) || i === '') { toast('Ingrese una potencia válida y un tramo', 'bad'); return false; }
+          const pcsUsed = E.num($('#fcS').value, gas.pcs); state.pcs = { ...(state.pcs || {}), [state.gas]: pcsUsed };
           M().segs[+i].q = q.toFixed(3); renderSegments(); changed(); toast(`Q = ${q.toFixed(3)} m³/h asignado`, 'ok');
         }
       }]
     });
-    const calcQ = () => E.flowFromPower(E.num($('#fcP').value), $('#fcU').value, E.num($('#fcS').value, gas.pcs));
+    const calcQ = () => E.flowFromPower(E.num($('#fcP').value), $('#fcU').value, E.num($('#fcS').value, pcs0));
     const upd = () => { const q = calcQ(); $('#fcR').textContent = q > 0 ? `${q.toFixed(3)} m³/h` : '— m³/h'; };
     ['#fcP', '#fcU', '#fcS'].forEach((s) => $(s).addEventListener('input', upd));
   }
@@ -538,7 +550,8 @@
     const d = reportData();
     if (!d.res.rows.length) { toast('No hay resultados para exportar', 'bad'); return; }
     const n = (v, k = 3) => (Number.isFinite(v) ? v.toFixed(k).replace('.', ',') : '');
-    const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    // Texto que empieza con = + - @ se antepone con ' para que Excel no lo ejecute como fórmula.
+    const q = (v) => { let t = String(v ?? ''); if (/^[=+\-@\t\r]/.test(t) && !/^-?\d+(,\d+)?$/.test(t)) t = "'" + t; return `"${t.replace(/"/g, '""')}"`; };
     const L = [];
     L.push(['TODO GAS SYR S.A.S. - NIT 901.126.243-3'].map(q).join(';'));
     L.push([`Memoria de cálculo - ${d.mode === 'baja' ? 'Baja presión (Renouard lineal)' : 'Media presión (Renouard cuadrática)'}`].map(q).join(';'));
@@ -577,6 +590,7 @@
     toast('Proyecto guardado', 'ok');
   }
   function openProject(file) {
+    if (file.size > 5 * 1024 * 1024) { toast('El archivo es demasiado grande para ser un proyecto', 'bad', 5000); return; }
     const rd = new FileReader();
     rd.onload = () => {
       try {

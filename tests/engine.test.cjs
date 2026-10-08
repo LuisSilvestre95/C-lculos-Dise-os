@@ -106,6 +106,30 @@ test('Catálogo: todos los diámetros internos son menores que los externos', ()
   Object.values(E.PIPES).forEach((m) => m.sizes.forEach((z) => assert.ok(z.di > 0 && z.di < z.de, m.label + ' ' + z.label)));
 });
 
+test('Proyecto real (José Ricardo Mendoza, Garagoa): coincide con la memoria entregada', () => {
+  const S = (ini, fin, q, l) => ({ ini, fin, q, l, mat: 'PEALPE', dn: '1620' });
+  const p = { G: 0.67, patm: 830.1, factorLE: 1.2, crit, mode: 'baja', pi: 23 };
+  const res = E.calcNetwork([S('B', 'C', 9.97, 0.05), S('C', 'D', 3.8, 1.65), S('C', 'E', 6.17, 0.05), S('E', 'F', 2.19, 2.9),
+    S('E', 'G', 3.97, 0.05), S('G', 'H', 2.02, 3.45), S('G', 'I', 1.96, 4.55)], p);
+  const pf = Object.fromEntries(res.rows.map((r) => [r.fin, +r.pf.toFixed(3)]));
+  assert.deepEqual(pf, { C: 22.904, D: 22.355, E: 22.864, F: 22.51, G: 22.846, H: 22.482, I: 22.392 });
+  close(res.rows[0].v, 16.16, 1e-3);
+  assert.equal(res.summary.ok, true);
+  assert.equal(res.warnings.length, 0, 'un redondeo de 0.01 m³/h no es un error de balance');
+  const m = E.calcNetwork([S('A', 'B', 9.97, 10.4)], { ...p, mode: 'media', pi: 350, crit: { pmin: 0, vmax: 20, maxLossPct: 10 } }).rows[0];
+  assert.equal(m.pf.toFixed(2), '332.09'); assert.equal(m.v.toFixed(2), '11.86'); assert.equal(m.lossPct.toFixed(2), '5.12');
+});
+
+test('Datos vacíos, cero, negativos o texto no rompen el cálculo', () => {
+  const p = { G: 0.67, patm: 830, factorLE: 1.2, crit, mode: 'baja', pi: 23 };
+  for (const q of ['', '0', '-3', 'abc', null, undefined, '1e400']) {
+    const r = E.calcNetwork([{ ini: 'A', fin: 'B', q, l: '5', mat: 'PEALPE', dn: '1620' }], p);
+    assert.equal(r.summary.ok, false); assert.ok(Array.isArray(r.rows));
+  }
+  assert.equal(E.calcNetwork([], p).summary.total, 0);
+  assert.ok(Number.isFinite(E.calcNetwork([{ ini: 'A', fin: 'B', q: '2,5', l: '3', mat: 'PEALPE', dn: '1620' }], p).rows[0].pf), 'acepta coma decimal');
+});
+
 test('Caudal desde potencia', () => {
   close(E.flowFromPower(10.35, 'kW', 10.35), 1);
   close(E.flowFromPower(100000, 'BTU/h', 10.35), 29.307107 / 10.35);
