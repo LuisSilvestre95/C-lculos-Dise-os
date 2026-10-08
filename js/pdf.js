@@ -204,21 +204,24 @@
     drawChart(d.specs.vel, M + cw + 6, y, cw, ch, 'Velocidad por tramo', 'Rojo: supera el límite · ámbar: >= 80 % del límite');
     y += ch + 8;
 
-    // Firma
-    if (y + 40 > H - 14) { doc.addPage(); headerSmall(); y = 24; }
-    const sigW = 76, sx = W - M - sigW;
-    if (B && B.logo) doc.addImage(B.logo, 'PNG', M, y, 30, 31.8, 'logo', 'FAST');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...C.ink); doc.text('TODO GAS SYR S.A.S.', M + 35, y + 9);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.8); doc.setTextColor(...C.ink2);
-    doc.text(T('NIT 901.126.243-3'), M + 35, y + 14);
-    doc.text(T('Diseño, cálculo e instalación de redes de gas'), M + 35, y + 18.5);
-    doc.text(T('Tel. 322 361 8360 · 320 948 5534 · Colombia'), M + 35, y + 23);
-    if (B && B.firma) doc.addImage(B.firma, 'PNG', sx + 8, y + 2, sigW - 16, (sigW - 16) / 3, 'firma', 'FAST');
-    doc.setDrawColor(...C.ink); doc.setLineWidth(0.35); doc.line(sx, y + 24, sx + sigW, y + 24);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.8); doc.setTextColor(...C.ink); doc.text(T('Luis Silvestre Supelano Beltrán'), sx + sigW / 2, y + 28.5, { align: 'center' });
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.4); doc.setTextColor(...C.ink2);
-    doc.text(T('Ingeniero · MP 041122-0809747 BYC - COPNIA'), sx + sigW / 2, y + 32.5, { align: 'center' });
-    doc.text(T('Responsable del diseño y cálculos'), sx + sigW / 2, y + 36.3, { align: 'center' });
+  // Firma
+if (y + 40 > H - 14) { doc.addPage(); headerSmall(); y = 24; }
+const sigW = 76, sx = W - M - sigW;
+
+if (B && B.logo) doc.addImage(B.logo, 'PNG', M, y, 30, 31.8, 'logo', 'FAST');
+doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...C.ink); doc.text('TODO GAS SYR S.A.S.', M + 35, y + 9);
+doc.setFont('helvetica', 'normal'); doc.setFontSize(7.8); doc.setTextColor(...C.ink2);
+doc.text(T('NIT 901.126.243-3'), M + 35, y + 14);
+doc.text(T('Diseño, cálculo e instalación de redes de gas'), M + 35, y + 18.5);
+doc.text(T('Tel. 322 361 8360 · 320 948 5534 · Colombia'), M + 35, y + 23);
+
+doc.addImage('assets/firma.png', 'PNG', sx + 8, y + 2, sigW - 16, (sigW - 16) / 3, 'firma', 'FAST');
+
+doc.setDrawColor(...C.ink); doc.setLineWidth(0.35); doc.line(sx, y + 24, sx + sigW, y + 24);
+doc.setFont('helvetica', 'bold'); doc.setFontSize(8.8); doc.setTextColor(...C.ink); doc.text(T('Luis Silvestre Supelano Beltrán'), sx + sigW / 2, y + 28.5, { align: 'center' });
+doc.setFont('helvetica', 'normal'); doc.setFontSize(7.4); doc.setTextColor(...C.ink2);
+doc.text(T('Ingeniero · MP 041122-0809747 BYC - COPNIA'), sx + sigW / 2, y + 32.5, { align: 'center' });
+doc.text(T('Responsable del diseño y cálculos'), sx + sigW / 2, y + 36.3, { align: 'center' });
 
     /* Pie de página en todas las hojas */
     const n = doc.getNumberOfPages();
