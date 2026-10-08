@@ -409,9 +409,13 @@
     const cols = COLS[res.mode];
     $('#resHead').innerHTML = '<tr>' + cols.map(([a, b]) => `<th>${esc(a)}${b ? `<i>${esc(b)}</i>` : ''}</th>`).join('') + '</tr>';
     if (!res.rows.length) { $('#resBody').innerHTML = `<tr><td colspan="${cols.length}" class="muted" style="padding:22px">Sin tramos calculados</td></tr>`; return; }
+    // data-label: nombre de la columna para la vista en tarjetas del celular.
+    const lab = cols.map(([a, b]) => esc(a + (b ? ' (' + b + ')' : '')));
     $('#resBody').innerHTML = resultRows(res).map(({ r, cells }) => {
-      if (!cells) return `<tr><td>${esc(r.ini)}-${esc(r.fin)}</td><td colspan="${cols.length - 1}" class="muted" style="text-align:left">${statusChip(r)}</td></tr>`;
-      return '<tr>' + cells.map(([v, cls]) => (v === '__status__' ? `<td>${statusChip(r)}</td>` : `<td class="${cls}">${esc(v)}</td>`)).join('') + '</tr>';
+      if (!cells) return `<tr class="r-inc"><td class="r-head">${esc(r.ini)}-${esc(r.fin)}</td><td colspan="${cols.length - 1}" class="muted r-status">${statusChip(r)}</td></tr>`;
+      return `<tr class="${r.ok ? 'r-ok' : 'r-bad'}">` + cells.map(([v, cls], k) => (v === '__status__'
+        ? `<td class="r-status" data-label="${lab[k]}">${statusChip(r)}</td>`
+        : `<td class="${cls}${k === 0 ? ' r-head' : ''}" data-label="${lab[k]}">${esc(v)}</td>`)).join('') + '</tr>';
     }).join('');
   }
 

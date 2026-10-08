@@ -341,3 +341,22 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
 }
 /* Tabla de resultados: todo centrado y con el mismo ancho de números */
 .res-table td, .res-table th { text-align: center; vertical-align: middle; }
+
+/* ---------------- Resultados en el celular: una tarjeta por tramo, sin deslizar ---------------- */
+@media (max-width: 760px) {
+  .table-scroll { overflow: visible; border: 0; }
+  .res-table, .res-table tbody { display: block; }
+  .res-table thead { display: none; }
+  .res-table tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin-bottom: 12px; border: 1px solid var(--line); border-left: 5px solid var(--line-2); border-radius: 14px; overflow: hidden; background: var(--surface); }
+  .res-table tr.r-ok { border-left-color: var(--ok); } .res-table tr.r-bad { border-left-color: var(--bad); }
+  .res-table td { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 1px; padding: 7px 4px; border-top: 1px solid var(--line); background: transparent !important; white-space: normal; font-size: 13.5px; position: static; box-shadow: none; }
+  .res-table tbody tr:nth-child(even) td { background: transparent !important; }
+  .res-table td::before { content: attr(data-label); font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .3px; line-height: 1.1; }
+  .res-table td.r-head { grid-column: 1 / -1; flex-direction: row; gap: 8px; border-top: 0; padding: 9px; font-size: 15px; font-weight: 850; color: #fff; background: var(--grad) !important; }
+  .res-table td.r-head::before { content: 'Tramo'; color: rgba(255,255,255,.85); font-size: 11px; }
+  .res-table tbody tr td.r-head, .res-table tbody tr:nth-child(even) td.r-head { background: var(--grad) !important; color: #fff; }
+  .res-table td.r-status { grid-column: 1 / -1; padding: 9px; }
+  .res-table td.r-status::before { display: none; }
+  .res-table td.c-warn, .res-table td.c-bad { border-radius: 0; }
+  .res-table td.c-warn { background: var(--warn-bg) !important; } .res-table td.c-bad { background: var(--bad-bg) !important; }
+}
