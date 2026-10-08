@@ -427,7 +427,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
       </div>
     </div>
     <div class="kpis" id="kpis">
-      <div class="kpi"><span>Presión mínima</span><strong id="kPf">—</strong><small id="kPfNode">nodo crítico</small></div>
+      <div class="kpi"><span>Presión mínima</span><strong id="kPf">—</strong><small id="kPfNode">punto final de la red</small></div>
       <div class="kpi"><span>Caída total</span><strong id="kDrop">—</strong><small id="kDropPct">—</small></div>
       <div class="kpi"><span>Velocidad máx.</span><strong id="kVel">—</strong><small id="kVelLim">—</small></div>
       <div class="kpi"><span>Tramos aprobados</span><strong id="kOk">—</strong><small id="kQ">—</small></div>
@@ -544,7 +544,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     <div class="card-body">
       <div class="charts">
         <figure class="chart-card">
-          <figcaption><b>Presión en cada nodo</b><span>Recorrido desde la fuente hasta el punto más desfavorable</span></figcaption>
+          <figcaption><b>Presión en cada nodo</b><span>Recorrido desde la fuente hasta el punto final de la red</span></figcaption>
           <div class="chart-box"><canvas id="chProfile" role="img" aria-label="Presión en cada nodo"></canvas></div>
         </figure>
         <figure class="chart-card">
@@ -909,7 +909,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     });
 
     const valid = rows.filter((r) => r.valid);
-    // Longitud acumulada desde la fuente y ruta crítica (menor presión final).
+    // Longitud acumulada desde la fuente y recorrido hasta el punto de menor presión.
     rows.forEach((r) => { r.dist = r.valid ? (r.parent >= 0 && rows[r.parent].valid ? rows[r.parent].dist : 0) + r.le : 0; });
     let critical = null;
     valid.forEach((r) => { if (!critical || r.pf < critical.pf) critical = r; });
@@ -1372,7 +1372,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     doc.text(incomplete ? 'INCOMPLETO' : okAll ? 'APROBADO' : 'RECHAZADO', xC + wC / 2, y + 18.8, { align: 'center' });
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.ink2);
     doc.text(T(`${s.approved} de ${s.total} tramos cumplen`), xC + wC / 2, y + 28.5, { align: 'center' });
-    doc.text(T(`Nodo crítico: ${s.criticalNode}`), xC + wC / 2, y + 33, { align: 'center' });
+    doc.text(T(Number.isFinite(s.pfMin) ? `Presión mínima: ${fmt(s.pfMin, 2)} mbar` : 'Complete los datos de los tramos'), xC + wC / 2, y + 33, { align: 'center' });
 
     // Tabla de resultados
     y += hC + 9;
@@ -1428,7 +1428,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
       const img = Charts.toPNG({ ...spec, fontScale: 1 }, pw * pxPerMm, ph * pxPerMm, 3.6);
       doc.addImage(img, 'PNG', x + 3, yy + 14, pw, ph, undefined, 'FAST');
     };
-    drawChart(d.specs.profile, M, y, cw, ch, 'Presión en cada nodo', 'Desde la fuente hasta el punto más desfavorable');
+    drawChart(d.specs.profile, M, y, cw, ch, 'Presión en cada nodo', 'Desde la fuente hasta el punto final de la red');
     drawChart(d.specs.vel, M + cw + 6, y, cw, ch, 'Velocidad por tramo', 'Rojo: supera el límite · ámbar: >= 80 % del límite');
     y += ch + 8;
 
@@ -1796,7 +1796,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     else { hero.classList.add('bad'); $('#heroValue').textContent = 'RECHAZADO'; $('#heroSub').textContent = `${s.total - s.approved} de ${s.total} tramos no cumplen`; use.setAttribute('href', '#i-x'); }
     const c = last.p.crit;
     $('#kPf').innerHTML = Number.isFinite(s.pfMin) ? `${fmt(s.pfMin, 2)}<em>mbar</em>` : '—';
-    $('#kPfNode').textContent = Number.isFinite(s.pfMin) ? `Nodo ${s.criticalNode}${c.pmin > 0 ? ` · mín. ${c.pmin}` : ''}` : 'punto más lejano';
+    $('#kPfNode').textContent = Number.isFinite(s.pfMin) ? `En el nodo ${s.criticalNode}${c.pmin > 0 ? ` · exigido ≥ ${c.pmin}` : ''}` : 'punto final de la red';
     $('#kPf').parentElement.className = 'kpi ' + (Number.isFinite(s.pfMin) && s.pfMin < c.pmin ? 'bad' : 'ok');
     $('#kDrop').innerHTML = Number.isFinite(s.totalLoss) ? `${fmt(s.totalLoss, 2)}<em>mbar</em>` : '—';
     $('#kDropPct').textContent = Number.isFinite(s.totalLossPct) ? `${fmt(s.totalLossPct, 1)} % de la presión de suministro` : '—';
@@ -2027,7 +2027,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     });
     L.push('');
     const s = d.res.summary;
-    L.push(['Resultado global', s.ok ? 'APROBADO' : s.complete ? 'RECHAZADO' : 'INCOMPLETO', 'Presión mínima (mbar)', n(s.pfMin, 3), 'Nodo crítico', s.criticalNode].map(q).join(';'));
+    L.push(['Resultado global', s.ok ? 'APROBADO' : s.complete ? 'RECHAZADO' : 'INCOMPLETO', 'Presión mínima (mbar)', n(s.pfMin, 3), 'En el nodo', s.criticalNode].map(q).join(';'));
     L.push(['Velocidad máxima (m/s)', n(s.vMax, 2), 'Caída total (mbar)', n(s.totalLoss, 3), 'Caudal total (m3/h)', n(s.qSource, 3)].map(q).join(';'));
     download(new Blob(['﻿' + L.join('\r\n')], { type: 'text/csv;charset=utf-8' }), fileBase() + '.csv');
     toast('Archivo CSV listo para Excel', 'ok');

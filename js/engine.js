@@ -301,7 +301,7 @@
     });
 
     const valid = rows.filter((r) => r.valid);
-    // Longitud acumulada desde la fuente y ruta crítica (menor presión final).
+    // Longitud acumulada desde la fuente y recorrido hasta el punto de menor presión.
     rows.forEach((r) => { r.dist = r.valid ? (r.parent >= 0 && rows[r.parent].valid ? rows[r.parent].dist : 0) + r.le : 0; });
     let critical = null;
     valid.forEach((r) => { if (!critical || r.pf < critical.pf) critical = r; });

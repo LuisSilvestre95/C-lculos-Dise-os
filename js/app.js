@@ -327,7 +327,7 @@
     else { hero.classList.add('bad'); $('#heroValue').textContent = 'RECHAZADO'; $('#heroSub').textContent = `${s.total - s.approved} de ${s.total} tramos no cumplen`; use.setAttribute('href', '#i-x'); }
     const c = last.p.crit;
     $('#kPf').innerHTML = Number.isFinite(s.pfMin) ? `${fmt(s.pfMin, 2)}<em>mbar</em>` : '—';
-    $('#kPfNode').textContent = Number.isFinite(s.pfMin) ? `Nodo ${s.criticalNode}${c.pmin > 0 ? ` · mín. ${c.pmin}` : ''}` : 'punto más lejano';
+    $('#kPfNode').textContent = Number.isFinite(s.pfMin) ? `En el nodo ${s.criticalNode}${c.pmin > 0 ? ` · exigido ≥ ${c.pmin}` : ''}` : 'punto final de la red';
     $('#kPf').parentElement.className = 'kpi ' + (Number.isFinite(s.pfMin) && s.pfMin < c.pmin ? 'bad' : 'ok');
     $('#kDrop').innerHTML = Number.isFinite(s.totalLoss) ? `${fmt(s.totalLoss, 2)}<em>mbar</em>` : '—';
     $('#kDropPct').textContent = Number.isFinite(s.totalLossPct) ? `${fmt(s.totalLossPct, 1)} % de la presión de suministro` : '—';
@@ -558,7 +558,7 @@
     });
     L.push('');
     const s = d.res.summary;
-    L.push(['Resultado global', s.ok ? 'APROBADO' : s.complete ? 'RECHAZADO' : 'INCOMPLETO', 'Presión mínima (mbar)', n(s.pfMin, 3), 'Nodo crítico', s.criticalNode].map(q).join(';'));
+    L.push(['Resultado global', s.ok ? 'APROBADO' : s.complete ? 'RECHAZADO' : 'INCOMPLETO', 'Presión mínima (mbar)', n(s.pfMin, 3), 'En el nodo', s.criticalNode].map(q).join(';'));
     L.push(['Velocidad máxima (m/s)', n(s.vMax, 2), 'Caída total (mbar)', n(s.totalLoss, 3), 'Caudal total (m3/h)', n(s.qSource, 3)].map(q).join(';'));
     download(new Blob(['﻿' + L.join('\r\n')], { type: 'text/csv;charset=utf-8' }), fileBase() + '.csv');
     toast('Archivo CSV listo para Excel', 'ok');

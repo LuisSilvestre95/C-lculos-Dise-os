@@ -155,7 +155,7 @@
     doc.text(incomplete ? 'INCOMPLETO' : okAll ? 'APROBADO' : 'RECHAZADO', xC + wC / 2, y + 18.8, { align: 'center' });
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.ink2);
     doc.text(T(`${s.approved} de ${s.total} tramos cumplen`), xC + wC / 2, y + 28.5, { align: 'center' });
-    doc.text(T(`Nodo crítico: ${s.criticalNode}`), xC + wC / 2, y + 33, { align: 'center' });
+    doc.text(T(Number.isFinite(s.pfMin) ? `Presión mínima: ${fmt(s.pfMin, 2)} mbar` : 'Complete los datos de los tramos'), xC + wC / 2, y + 33, { align: 'center' });
 
     // Tabla de resultados
     y += hC + 9;
@@ -211,7 +211,7 @@
       const img = Charts.toPNG({ ...spec, fontScale: 1 }, pw * pxPerMm, ph * pxPerMm, 3.6);
       doc.addImage(img, 'PNG', x + 3, yy + 14, pw, ph, undefined, 'FAST');
     };
-    drawChart(d.specs.profile, M, y, cw, ch, 'Presión en cada nodo', 'Desde la fuente hasta el punto más desfavorable');
+    drawChart(d.specs.profile, M, y, cw, ch, 'Presión en cada nodo', 'Desde la fuente hasta el punto final de la red');
     drawChart(d.specs.vel, M + cw + 6, y, cw, ch, 'Velocidad por tramo', 'Rojo: supera el límite · ámbar: >= 80 % del límite');
     y += ch + 8;
 
