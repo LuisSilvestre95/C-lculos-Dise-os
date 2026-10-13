@@ -45,8 +45,7 @@
     ['baja', 'media'].forEach((m) => {
       const src = s[m] || {};
       out[m] = { ...d[m] };
-      ['pi', 'pmin', 'vmax', 'maxLossPct', 'kv'].forEach((k) => { if (src[k] != null) out[m][k] = str(src[k], 20); });
-      if (m === 'media') out[m].method = src.method === 'renouard' ? 'renouard' : 'muller';
+      ['pi', 'pmin', 'vmax', 'maxLossPct'].forEach((k) => { if (src[k] != null) out[m][k] = str(src[k], 20); });
       out[m].segs = (Array.isArray(src.segs) ? src.segs.slice(0, MAX_SEGS) : []).filter((g) => g && typeof g === 'object').map((g) => ({
         id: newId(), ini: str(g.ini || 'A', 4).toUpperCase().replace(/[^A-Z0-9]/g, ''), fin: str(g.fin || 'B', 4).toUpperCase().replace(/[^A-Z0-9]/g, ''),
         q: str(g.q, 20), l: str(g.l, 20), mat: E.PIPES[g.mat] ? g.mat : 'PEALPE', dn: str(g.dn, 12), di: str(g.di, 20)
@@ -65,7 +64,7 @@
   const M = () => state[state.mode];
   const params = (extra = {}) => ({
     mode: state.mode, G: E.num(state.G, 0.67), patm: E.num(state.patm, 1013.25), pi: E.num(M().pi), factorLE: E.num(state.factorLE, 1.2),
-    method: state.mode === 'media' ? (M().method === 'renouard' ? 'renouard' : 'muller') : 'renouard', kv: E.num(M().kv, 354),
+    method: state.mode === 'media' ? 'muller' : 'renouard', kv: E.K.VELOCIDAD, // automáticos según el régimen
     crit: { pmin: E.num(M().pmin), vmax: E.num(M().vmax, 20), maxLossPct: E.num(M().maxLossPct, 10) }, demand: 1, ...extra
   });
 
@@ -109,6 +108,7 @@
     cs.innerHTML = opts.map(({ i, c }) => `<option value="${i}">${esc(c.name)} · ${esc(c.dept)} (${c.alt} m)</option>`).join('') + '<option value="custom">⚙ Personalizado (altitud / presión manual)</option>';
     $('#gas').innerHTML = Object.entries(E.GASES).map(([k, g]) => `<option value="${k}">${esc(g.label)}</option>`).join('');
   }
+  const isGLP = (g) => ['GLP', 'GLPM', 'BUT'].includes(g);
   function paintParams() {
     $('#city').value = state.city;
     $('#altitude').value = state.altitude;
@@ -117,18 +117,25 @@
     $('#G').value = state.G;
     $('#factorLE').value = state.factorLE;
     const m = M();
-    $('#pi').value = m.pi; $('#pmin').value = m.pmin; $('#vmax').value = m.vmax; $('#maxLoss').value = m.maxLossPct; $('#kv').value = m.kv ?? 354;
-    const ms = $('#method');
-    ms.innerHTML = state.mode === 'baja'
-      ? '<option value="renouard">Renouard lineal (baja presión)</option>'
-      : '<option value="muller">Müller · como en mis hojas de cálculo</option><option value="renouard">Renouard cuadrática</option>';
-    ms.value = state.mode === 'baja' ? 'renouard' : (m.method === 'renouard' ? 'renouard' : 'muller');
-    ms.disabled = state.mode === 'baja';
-    $('#methodHint').textContent = state.mode === 'baja' ? 'ΔP = 23 200 · S · Le · Q^1.82 · D^-4.82'
-      : ms.value === 'muller' ? 'P1² − P2² = (Q·S^0.425·Le^0.576 / (4.61e-5·D^2.725))^1.74' : 'P1² − P2² = 48 600 · S · Le · Q^1.82 · D^-4.82';
-    $('#piHint').textContent = state.mode === 'baja' ? 'Típico residencial: 21–23 mbar (GN) · 28–37 mbar (GLP)' : 'Salida del regulador de primera etapa (100–5000 mbar)';
+    $('#pi').value = m.pi; $('#pmin').value = m.pmin; $('#vmax').value = m.vmax; $('#maxLoss').value = m.maxLossPct;
+    // Solo se muestran los campos que hacen falta: altitud y Patm si el municipio es personalizado; S si el gas es "otro".
+    document.body.classList.toggle('city-custom', state.city === 'custom');
+    document.body.classList.toggle('gas-other', state.gas === 'OTRO');
+    const c = state.city !== 'custom' ? E.CITIES[+state.city] : null;
+    $('#cityHint').textContent = c ? `${c.alt} m s. n. m. · presión atmosférica ${fmt(E.num(state.patm), 1)} mbar (automática)` : 'Escriba la altitud o la presión atmosférica del sitio.';
+    $('#gasHint').textContent = state.gas === 'OTRO' ? 'Escriba la densidad relativa del gas.' : `Densidad relativa S = ${fmt(E.num(state.G), 2)} (automática)`;
+    $('#piHint').textContent = state.mode === 'baja'
+      ? (isGLP(state.gas) ? 'Típico GLP: 28–37 mbar' : 'Típico gas natural: 21–23 mbar')
+      : 'Salida del regulador de primera etapa (100–5000 mbar)';
+    renderAutoLine();
     $$('[data-client]').forEach((el) => { el.value = state.client[el.dataset.client] || ''; });
     refPlaceholder();
+  }
+  /** Resumen de lo que la app decidió sola, para que siempre se sepa con qué se calcula. */
+  function renderAutoLine() {
+    const g = (E.GASES[state.gas] || {}).label || 'Gas';
+    const f = state.mode === 'baja' ? 'Renouard lineal' : 'Müller';
+    $('#autoLine').innerHTML = `${icon('gauge')} Automático: <b>${state.mode === 'baja' ? 'baja' : 'media'} presión</b> · fórmula <b>${f}</b> · <b>${esc(g)}</b> · Patm <b>${fmt(E.num(state.patm), 1)} mbar</b> · Le = L × ${esc(String(state.factorLE))}`;
   }
   // El campo "Informe" muestra el nombre del cliente mientras no se escriba otro valor.
   function refPlaceholder() { const n = (state.client.name || '').trim(); $('#cRef').placeholder = n || 'Nombre del cliente'; }
@@ -138,37 +145,40 @@
       if (state.city !== 'custom') {
         const c = E.CITIES[+state.city];
         state.altitude = c.alt; state.patm = +E.patmFromAltitude(c.alt).toFixed(1);
-        $('#altitude').value = state.altitude; $('#patm').value = state.patm;
         if (!state.client.city) { state.client.city = c.name; $('#cCity').value = c.name; }
         toast(`${c.name}: ${c.alt} m s. n. m. → ${state.patm} mbar`, 'ok');
       }
-      changed();
+      paintParams(); changed();
     });
     $('#altitude').addEventListener('input', (e) => {
       state.altitude = e.target.value; state.city = 'custom'; $('#city').value = 'custom';
       const h = E.num(e.target.value, NaN);
       if (Number.isFinite(h)) { state.patm = +E.patmFromAltitude(h).toFixed(1); $('#patm').value = state.patm; }
-      changed();
+      renderAutoLine(); changed();
     });
-    $('#patm').addEventListener('input', (e) => { state.patm = e.target.value; state.city = 'custom'; $('#city').value = 'custom'; changed(); });
+    $('#patm').addEventListener('input', (e) => { state.patm = e.target.value; state.city = 'custom'; $('#city').value = 'custom'; renderAutoLine(); changed(); });
     $('#gas').addEventListener('change', (e) => {
       state.gas = e.target.value;
       if (state.gas !== 'OTRO') { state.G = E.GASES[state.gas].G; $('#G').value = state.G; }
-      if (state.mode === 'baja' && ['GLP', 'GLPM', 'BUT'].includes(state.gas) && E.num(M().pi) < 25) { M().pi = 28; $('#pi').value = 28; }
-      changed();
+      // Presión típica según el gas (solo si sigue el valor típico del otro gas).
+      const bp = E.num(state.baja.pi);
+      if (isGLP(state.gas) && bp <= 23) state.baja.pi = 28;
+      if (!isGLP(state.gas) && state.gas !== 'OTRO' && bp === 28) state.baja.pi = 23;
+      paintParams(); changed();
     });
     $('#G').addEventListener('input', (e) => { state.G = e.target.value; const g = E.GASES[state.gas]; if (g && E.num(e.target.value) !== g.G) { state.gas = 'OTRO'; $('#gas').value = 'OTRO'; } changed(); });
-    $('#factorLE').addEventListener('input', (e) => { state.factorLE = e.target.value; changed(); });
-    $('#method').addEventListener('change', (e) => { if (state.mode === 'media') { M().method = e.target.value; paintParams(); changed(); } });
-    $('#excelBtn').addEventListener('click', () => {
-      // Valores fijos de las hojas de Excel de TODO GAS SYR: Patm 723.6 mbar, Le = L × 1.2, S = 0.67, k = 345 (baja) / 354 (media), Müller en media.
-      state.city = 'custom'; state.patm = 723.6; state.altitude = Math.round((1 - Math.pow(723.6 / 1013.25, 1 / 5.25588)) / 2.25577e-5);
-      state.factorLE = 1.2; state.gas = 'GN'; state.G = 0.67;
-      state.baja.kv = 345; state.media.kv = 354; state.media.method = 'muller';
-      paintParams(); changed();
-      toast('Listo: Patm 723.6 mbar, Le = L×1.2, k 345 (baja) / 354 (media) y Müller en media, igual que en sus Excel', 'ok', 5000);
+    $('#factorLE').addEventListener('input', (e) => { state.factorLE = e.target.value; renderAutoLine(); changed(); });
+    [['pi', 'pi'], ['pmin', 'pmin'], ['vmax', 'vmax'], ['maxLoss', 'maxLossPct']].forEach(([id, key]) => $('#' + id).addEventListener('input', (e) => { M()[key] = e.target.value; changed(); }));
+    // Régimen automático: más de 100 mbar es media presión; menos de 100 mbar es baja presión.
+    $('#pi').addEventListener('change', (e) => {
+      const v = E.num(e.target.value, NaN);
+      if (!Number.isFinite(v) || v <= 0) return;
+      const want = v > 100 ? 'media' : 'baja';
+      if (want === state.mode) return;
+      state[want].pi = e.target.value;
+      toast(`${fmt(v, 0)} mbar es ${want === 'media' ? 'media' : 'baja'} presión: se cambió automáticamente`, 'ok', 4500);
+      setMode(want);
     });
-    [['pi', 'pi'], ['pmin', 'pmin'], ['vmax', 'vmax'], ['maxLoss', 'maxLossPct'], ['kv', 'kv']].forEach(([id, key]) => $('#' + id).addEventListener('input', (e) => { M()[key] = e.target.value; changed(); }));
     $$('[data-client]').forEach((el) => el.addEventListener('input', () => { state.client[el.dataset.client] = el.value; persist(); refPlaceholder(); }));
   }
 
@@ -594,7 +604,7 @@
     const q = (v) => { let t = String(v ?? ''); if (/^[=+\-@\t\r]/.test(t) && !/^-?\d+(,\d+)?$/.test(t)) t = "'" + t; return `"${t.replace(/"/g, '""')}"`; };
     const L = [];
     L.push(['TODO GAS SYR S.A.S. - NIT 901.126.243-3'].map(q).join(';'));
-    L.push([`Memoria de cálculo - ${d.mode === 'baja' ? 'Baja presión (Renouard lineal)' : d.params.method === 'renouard' ? 'Media presión (Renouard cuadrática)' : 'Media presión (Müller)'}`, `Constante de velocidad ${d.params.kv}`].map(q).join(';'));
+    L.push([`Memoria de cálculo - ${d.mode === 'baja' ? 'Baja presión (Renouard lineal)' : 'Media presión (Müller)'}`].map(q).join(';'));
     L.push(['Cliente', d.client.name, 'Cédula/NIT', d.client.id].map(q).join(';'));
     L.push(['Dirección', d.client.address, 'Municipio', d.client.city].map(q).join(';'));
     L.push(['Fecha', d.date, 'Informe', (d.client.ref || '').trim() || d.client.name].map(q).join(';'));

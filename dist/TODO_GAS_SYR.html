@@ -377,7 +377,12 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
   .res-table td.c-warn { background: var(--warn-bg) !important; } .res-table td.c-bad { background: var(--bad-bg) !important; }
 }
 
-.excel-btn { margin-top: 12px; }
+
+/* Campos que solo aparecen cuando hacen falta */
+.only-custom, .only-other { display: none; }
+body.city-custom .only-custom, body.gas-other .only-other { display: block; }
+.auto-line { margin: 12px 0 0; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--cyan) 9%, var(--surface)); border: 1px solid color-mix(in srgb, var(--cyan) 25%, var(--line)); font-size: 12.5px; color: var(--ink-2); line-height: 1.45; }
+.auto-line b { color: var(--ink); }
 
 </style>
 <script>
@@ -476,48 +481,39 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
           <div class="field span-2">
             <label for="city"><svg><use href="#i-pin"/></svg>Municipio</label>
             <select id="city"></select>
-            <small id="cityHint">La presión atmosférica se calcula con la altitud (atmósfera estándar ISA).</small>
+            <small id="cityHint"></small>
           </div>
-          <div class="field">
+          <div class="field only-custom">
             <label for="altitude">Altitud (m s. n. m.)</label>
             <input id="altitude" type="text" inputmode="decimal" autocomplete="off">
           </div>
-          <div class="field">
+          <div class="field only-custom">
             <label for="patm">Presión atmosférica (mbar)</label>
             <input id="patm" type="text" inputmode="decimal" autocomplete="off">
           </div>
           <div class="field">
             <label for="gas">Tipo de gas</label>
             <select id="gas"></select>
-          </div>
-          <div class="field">
-            <label for="G">Densidad relativa (S)</label>
-            <input id="G" type="text" inputmode="decimal" autocomplete="off">
+            <small id="gasHint"></small>
           </div>
           <div class="field">
             <label for="pi">Presión de suministro (mbar)</label>
             <input id="pi" type="text" inputmode="decimal" autocomplete="off">
             <small id="piHint"></small>
           </div>
-          <div class="field">
-            <label for="factorLE">Factor longitud equivalente</label>
-            <input id="factorLE" type="text" inputmode="decimal" autocomplete="off">
-            <small>Le = L × factor (accesorios)</small>
-          </div>
-          <div class="field span-2">
-            <label for="method">Fórmula de cálculo</label>
-            <select id="method"></select>
-            <small id="methodHint"></small>
+          <div class="field only-other">
+            <label for="G">Densidad relativa (S)</label>
+            <input id="G" type="text" inputmode="decimal" autocomplete="off">
           </div>
         </div>
-        <button class="chip-btn excel-btn" id="excelBtn" type="button"><svg><use href="#i-table"/></svg>Usar los mismos valores de mis Excel</button>
+        <p class="auto-line" id="autoLine"></p>
         <details class="criteria">
-          <summary><svg><use href="#i-check"/></svg>Criterios de aceptación</summary>
+          <summary><svg><use href="#i-check"/></svg>Criterios y ajustes</summary>
           <div class="fields">
             <div class="field"><label for="pmin">Presión mínima final (mbar)</label><input id="pmin" type="text" inputmode="decimal"></div>
             <div class="field"><label for="vmax">Velocidad máxima (m/s)</label><input id="vmax" type="text" inputmode="decimal"></div>
             <div class="field"><label for="maxLoss">Pérdida máx. por tramo (%)</label><input id="maxLoss" type="text" inputmode="decimal"></div>
-            <div class="field"><label for="kv">Constante de velocidad</label><input id="kv" type="text" inputmode="decimal"><small>V = k · Q / (P<sub>abs</sub> · D²) · recomendado 354</small></div>
+            <div class="field"><label for="factorLE">Factor longitud equivalente</label><input id="factorLE" type="text" inputmode="decimal" autocomplete="off"><small>Le = L × factor (accesorios)</small></div>
           </div>
         </details>
       </div>
@@ -613,8 +609,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     <summary class="card-title"><svg><use href="#i-book"/></svg>Fórmulas y bases de cálculo</summary>
     <div class="card-body formula-body">
       <div class="formula"><b>Baja presión — Renouard lineal</b><code>ΔP = 23 200 · S · Le · Q<sup>1.82</sup> · D<sup>−4.82</sup></code><small>ΔP en mbar · Le en m · Q en m³/h · D interno en mm</small></div>
-      <div class="formula"><b>Media presión — Müller (por defecto)</b><code>P₁² − P₂² = ( Q · S<sup>0.425</sup> · Le<sup>0.576</sup> / (4.61·10⁻⁵ · D<sup>2.725</sup>) )<sup>1.74</sup></code><small>P absolutas en mbar · Le en m · Q en m³/h · D interno en mm</small></div>
-      <div class="formula"><b>Media presión — Renouard cuadrática (alternativa)</b><code>P₁² − P₂² = 48 600 · S · Le · Q<sup>1.82</sup> · D<sup>−4.82</sup></code><small>P absolutas en bar, Le en km (equivale a 4.86·10⁷ con P en mbar y Le en m)</small></div>
+      <div class="formula"><b>Media presión — Müller</b><code>P₁² − P₂² = ( Q · S<sup>0.425</sup> · Le<sup>0.576</sup> / (4.61·10⁻⁵ · D<sup>2.725</sup>) )<sup>1.74</sup></code><small>P absolutas en mbar · Le en m · Q en m³/h · D interno en mm</small></div>
       <div class="formula"><b>Velocidad del gas</b><code>V = 354 · Q / (P<sub>abs</sub> · D²)</code><small>V en m/s · P absoluta en bar al final del tramo · D en mm</small></div>
       <div class="formula"><b>Longitud equivalente</b><code>Le = L × factor</code><small>Factor 1.2 = 20 % adicional por accesorios</small></div>
       <div class="formula"><b>Presión atmosférica (ISA)</b><code>P<sub>atm</sub> = 1013.25 · (1 − 2.25577·10⁻⁵ · h)<sup>5.25588</sup></code><small>h = altitud en m s. n. m.</small></div>
@@ -630,7 +625,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     <div>
       <p><b>TODO GAS SYR S.A.S.</b> · NIT 901.126.243-3 · Colombia</p>
       <p>Diseño y cálculos: Luis Silvestre · Ingeniero MP 041122-0809747 BYC — COPNIA</p>
-      <p>Tel. 322 361 8360 · 320 948 5534 · © 2026 · <span class="app-version">Versión 2.9</span></p>
+      <p>Tel. 322 361 8360 · 320 948 5534 · © 2026 · <span class="app-version">Versión 3.0</span></p>
     </div>
   </div>
 </footer>
@@ -788,11 +783,11 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
   ].map(([name, dept, alt]) => ({ name, dept, alt }));
 
   const GASES = {
-    GN: { label: 'Gas natural (GN)', G: 0.67, pcs: 10.35 },          // PCS ≈ 37.3 MJ/m³
-    GLP: { label: 'GLP · propano comercial', G: 1.52, pcs: 26.0 },    // PCS ≈ 93.6 MJ/m³
-    GLPM: { label: 'GLP · mezcla 60/40 propano-butano', G: 1.71, pcs: 29.2 },
-    BUT: { label: 'GLP · butano', G: 2.0, pcs: 34.0 },               // PCS ≈ 122 MJ/m³
-    OTRO: { label: 'Otro gas (densidad manual)', G: 0.67, pcs: 10.35 }
+    GN: { label: 'Gas natural', G: 0.67, pcs: 10.35 },          // PCS ≈ 37.3 MJ/m³
+    GLP: { label: 'GLP propano', G: 1.52, pcs: 26.0 },    // PCS ≈ 93.6 MJ/m³
+    GLPM: { label: 'GLP mezcla 60/40', G: 1.71, pcs: 29.2 },
+    BUT: { label: 'GLP butano', G: 2.0, pcs: 34.0 },               // PCS ≈ 122 MJ/m³
+    OTRO: { label: 'Otro gas', G: 0.67, pcs: 10.35 }
   };
 
   const DEFAULT_CRITERIA = {
@@ -1593,8 +1588,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     ['baja', 'media'].forEach((m) => {
       const src = s[m] || {};
       out[m] = { ...d[m] };
-      ['pi', 'pmin', 'vmax', 'maxLossPct', 'kv'].forEach((k) => { if (src[k] != null) out[m][k] = str(src[k], 20); });
-      if (m === 'media') out[m].method = src.method === 'renouard' ? 'renouard' : 'muller';
+      ['pi', 'pmin', 'vmax', 'maxLossPct'].forEach((k) => { if (src[k] != null) out[m][k] = str(src[k], 20); });
       out[m].segs = (Array.isArray(src.segs) ? src.segs.slice(0, MAX_SEGS) : []).filter((g) => g && typeof g === 'object').map((g) => ({
         id: newId(), ini: str(g.ini || 'A', 4).toUpperCase().replace(/[^A-Z0-9]/g, ''), fin: str(g.fin || 'B', 4).toUpperCase().replace(/[^A-Z0-9]/g, ''),
         q: str(g.q, 20), l: str(g.l, 20), mat: E.PIPES[g.mat] ? g.mat : 'PEALPE', dn: str(g.dn, 12), di: str(g.di, 20)
@@ -1613,7 +1607,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
   const M = () => state[state.mode];
   const params = (extra = {}) => ({
     mode: state.mode, G: E.num(state.G, 0.67), patm: E.num(state.patm, 1013.25), pi: E.num(M().pi), factorLE: E.num(state.factorLE, 1.2),
-    method: state.mode === 'media' ? (M().method === 'renouard' ? 'renouard' : 'muller') : 'renouard', kv: E.num(M().kv, 354),
+    method: state.mode === 'media' ? 'muller' : 'renouard', kv: E.K.VELOCIDAD, // automáticos según el régimen
     crit: { pmin: E.num(M().pmin), vmax: E.num(M().vmax, 20), maxLossPct: E.num(M().maxLossPct, 10) }, demand: 1, ...extra
   });
 
@@ -1657,6 +1651,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     cs.innerHTML = opts.map(({ i, c }) => `<option value="${i}">${esc(c.name)} · ${esc(c.dept)} (${c.alt} m)</option>`).join('') + '<option value="custom">⚙ Personalizado (altitud / presión manual)</option>';
     $('#gas').innerHTML = Object.entries(E.GASES).map(([k, g]) => `<option value="${k}">${esc(g.label)}</option>`).join('');
   }
+  const isGLP = (g) => ['GLP', 'GLPM', 'BUT'].includes(g);
   function paintParams() {
     $('#city').value = state.city;
     $('#altitude').value = state.altitude;
@@ -1665,18 +1660,25 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     $('#G').value = state.G;
     $('#factorLE').value = state.factorLE;
     const m = M();
-    $('#pi').value = m.pi; $('#pmin').value = m.pmin; $('#vmax').value = m.vmax; $('#maxLoss').value = m.maxLossPct; $('#kv').value = m.kv ?? 354;
-    const ms = $('#method');
-    ms.innerHTML = state.mode === 'baja'
-      ? '<option value="renouard">Renouard lineal (baja presión)</option>'
-      : '<option value="muller">Müller · como en mis hojas de cálculo</option><option value="renouard">Renouard cuadrática</option>';
-    ms.value = state.mode === 'baja' ? 'renouard' : (m.method === 'renouard' ? 'renouard' : 'muller');
-    ms.disabled = state.mode === 'baja';
-    $('#methodHint').textContent = state.mode === 'baja' ? 'ΔP = 23 200 · S · Le · Q^1.82 · D^-4.82'
-      : ms.value === 'muller' ? 'P1² − P2² = (Q·S^0.425·Le^0.576 / (4.61e-5·D^2.725))^1.74' : 'P1² − P2² = 48 600 · S · Le · Q^1.82 · D^-4.82';
-    $('#piHint').textContent = state.mode === 'baja' ? 'Típico residencial: 21–23 mbar (GN) · 28–37 mbar (GLP)' : 'Salida del regulador de primera etapa (100–5000 mbar)';
+    $('#pi').value = m.pi; $('#pmin').value = m.pmin; $('#vmax').value = m.vmax; $('#maxLoss').value = m.maxLossPct;
+    // Solo se muestran los campos que hacen falta: altitud y Patm si el municipio es personalizado; S si el gas es "otro".
+    document.body.classList.toggle('city-custom', state.city === 'custom');
+    document.body.classList.toggle('gas-other', state.gas === 'OTRO');
+    const c = state.city !== 'custom' ? E.CITIES[+state.city] : null;
+    $('#cityHint').textContent = c ? `${c.alt} m s. n. m. · presión atmosférica ${fmt(E.num(state.patm), 1)} mbar (automática)` : 'Escriba la altitud o la presión atmosférica del sitio.';
+    $('#gasHint').textContent = state.gas === 'OTRO' ? 'Escriba la densidad relativa del gas.' : `Densidad relativa S = ${fmt(E.num(state.G), 2)} (automática)`;
+    $('#piHint').textContent = state.mode === 'baja'
+      ? (isGLP(state.gas) ? 'Típico GLP: 28–37 mbar' : 'Típico gas natural: 21–23 mbar')
+      : 'Salida del regulador de primera etapa (100–5000 mbar)';
+    renderAutoLine();
     $$('[data-client]').forEach((el) => { el.value = state.client[el.dataset.client] || ''; });
     refPlaceholder();
+  }
+  /** Resumen de lo que la app decidió sola, para que siempre se sepa con qué se calcula. */
+  function renderAutoLine() {
+    const g = (E.GASES[state.gas] || {}).label || 'Gas';
+    const f = state.mode === 'baja' ? 'Renouard lineal' : 'Müller';
+    $('#autoLine').innerHTML = `${icon('gauge')} Automático: <b>${state.mode === 'baja' ? 'baja' : 'media'} presión</b> · fórmula <b>${f}</b> · <b>${esc(g)}</b> · Patm <b>${fmt(E.num(state.patm), 1)} mbar</b> · Le = L × ${esc(String(state.factorLE))}`;
   }
   // El campo "Informe" muestra el nombre del cliente mientras no se escriba otro valor.
   function refPlaceholder() { const n = (state.client.name || '').trim(); $('#cRef').placeholder = n || 'Nombre del cliente'; }
@@ -1686,37 +1688,40 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
       if (state.city !== 'custom') {
         const c = E.CITIES[+state.city];
         state.altitude = c.alt; state.patm = +E.patmFromAltitude(c.alt).toFixed(1);
-        $('#altitude').value = state.altitude; $('#patm').value = state.patm;
         if (!state.client.city) { state.client.city = c.name; $('#cCity').value = c.name; }
         toast(`${c.name}: ${c.alt} m s. n. m. → ${state.patm} mbar`, 'ok');
       }
-      changed();
+      paintParams(); changed();
     });
     $('#altitude').addEventListener('input', (e) => {
       state.altitude = e.target.value; state.city = 'custom'; $('#city').value = 'custom';
       const h = E.num(e.target.value, NaN);
       if (Number.isFinite(h)) { state.patm = +E.patmFromAltitude(h).toFixed(1); $('#patm').value = state.patm; }
-      changed();
+      renderAutoLine(); changed();
     });
-    $('#patm').addEventListener('input', (e) => { state.patm = e.target.value; state.city = 'custom'; $('#city').value = 'custom'; changed(); });
+    $('#patm').addEventListener('input', (e) => { state.patm = e.target.value; state.city = 'custom'; $('#city').value = 'custom'; renderAutoLine(); changed(); });
     $('#gas').addEventListener('change', (e) => {
       state.gas = e.target.value;
       if (state.gas !== 'OTRO') { state.G = E.GASES[state.gas].G; $('#G').value = state.G; }
-      if (state.mode === 'baja' && ['GLP', 'GLPM', 'BUT'].includes(state.gas) && E.num(M().pi) < 25) { M().pi = 28; $('#pi').value = 28; }
-      changed();
+      // Presión típica según el gas (solo si sigue el valor típico del otro gas).
+      const bp = E.num(state.baja.pi);
+      if (isGLP(state.gas) && bp <= 23) state.baja.pi = 28;
+      if (!isGLP(state.gas) && state.gas !== 'OTRO' && bp === 28) state.baja.pi = 23;
+      paintParams(); changed();
     });
     $('#G').addEventListener('input', (e) => { state.G = e.target.value; const g = E.GASES[state.gas]; if (g && E.num(e.target.value) !== g.G) { state.gas = 'OTRO'; $('#gas').value = 'OTRO'; } changed(); });
-    $('#factorLE').addEventListener('input', (e) => { state.factorLE = e.target.value; changed(); });
-    $('#method').addEventListener('change', (e) => { if (state.mode === 'media') { M().method = e.target.value; paintParams(); changed(); } });
-    $('#excelBtn').addEventListener('click', () => {
-      // Valores fijos de las hojas de Excel de TODO GAS SYR: Patm 723.6 mbar, Le = L × 1.2, S = 0.67, k = 345 (baja) / 354 (media), Müller en media.
-      state.city = 'custom'; state.patm = 723.6; state.altitude = Math.round((1 - Math.pow(723.6 / 1013.25, 1 / 5.25588)) / 2.25577e-5);
-      state.factorLE = 1.2; state.gas = 'GN'; state.G = 0.67;
-      state.baja.kv = 345; state.media.kv = 354; state.media.method = 'muller';
-      paintParams(); changed();
-      toast('Listo: Patm 723.6 mbar, Le = L×1.2, k 345 (baja) / 354 (media) y Müller en media, igual que en sus Excel', 'ok', 5000);
+    $('#factorLE').addEventListener('input', (e) => { state.factorLE = e.target.value; renderAutoLine(); changed(); });
+    [['pi', 'pi'], ['pmin', 'pmin'], ['vmax', 'vmax'], ['maxLoss', 'maxLossPct']].forEach(([id, key]) => $('#' + id).addEventListener('input', (e) => { M()[key] = e.target.value; changed(); }));
+    // Régimen automático: más de 100 mbar es media presión; menos de 100 mbar es baja presión.
+    $('#pi').addEventListener('change', (e) => {
+      const v = E.num(e.target.value, NaN);
+      if (!Number.isFinite(v) || v <= 0) return;
+      const want = v > 100 ? 'media' : 'baja';
+      if (want === state.mode) return;
+      state[want].pi = e.target.value;
+      toast(`${fmt(v, 0)} mbar es ${want === 'media' ? 'media' : 'baja'} presión: se cambió automáticamente`, 'ok', 4500);
+      setMode(want);
     });
-    [['pi', 'pi'], ['pmin', 'pmin'], ['vmax', 'vmax'], ['maxLoss', 'maxLossPct'], ['kv', 'kv']].forEach(([id, key]) => $('#' + id).addEventListener('input', (e) => { M()[key] = e.target.value; changed(); }));
     $$('[data-client]').forEach((el) => el.addEventListener('input', () => { state.client[el.dataset.client] = el.value; persist(); refPlaceholder(); }));
   }
 
@@ -2142,7 +2147,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     const q = (v) => { let t = String(v ?? ''); if (/^[=+\-@\t\r]/.test(t) && !/^-?\d+(,\d+)?$/.test(t)) t = "'" + t; return `"${t.replace(/"/g, '""')}"`; };
     const L = [];
     L.push(['TODO GAS SYR S.A.S. - NIT 901.126.243-3'].map(q).join(';'));
-    L.push([`Memoria de cálculo - ${d.mode === 'baja' ? 'Baja presión (Renouard lineal)' : d.params.method === 'renouard' ? 'Media presión (Renouard cuadrática)' : 'Media presión (Müller)'}`, `Constante de velocidad ${d.params.kv}`].map(q).join(';'));
+    L.push([`Memoria de cálculo - ${d.mode === 'baja' ? 'Baja presión (Renouard lineal)' : 'Media presión (Müller)'}`].map(q).join(';'));
     L.push(['Cliente', d.client.name, 'Cédula/NIT', d.client.id].map(q).join(';'));
     L.push(['Dirección', d.client.address, 'Municipio', d.client.city].map(q).join(';'));
     L.push(['Fecha', d.date, 'Informe', (d.client.ref || '').trim() || d.client.name].map(q).join(';'));

@@ -139,11 +139,11 @@
   ].map(([name, dept, alt]) => ({ name, dept, alt }));
 
   const GASES = {
-    GN: { label: 'Gas natural (GN)', G: 0.67, pcs: 10.35 },          // PCS ≈ 37.3 MJ/m³
-    GLP: { label: 'GLP · propano comercial', G: 1.52, pcs: 26.0 },    // PCS ≈ 93.6 MJ/m³
-    GLPM: { label: 'GLP · mezcla 60/40 propano-butano', G: 1.71, pcs: 29.2 },
-    BUT: { label: 'GLP · butano', G: 2.0, pcs: 34.0 },               // PCS ≈ 122 MJ/m³
-    OTRO: { label: 'Otro gas (densidad manual)', G: 0.67, pcs: 10.35 }
+    GN: { label: 'Gas natural', G: 0.67, pcs: 10.35 },          // PCS ≈ 37.3 MJ/m³
+    GLP: { label: 'GLP propano', G: 1.52, pcs: 26.0 },    // PCS ≈ 93.6 MJ/m³
+    GLPM: { label: 'GLP mezcla 60/40', G: 1.71, pcs: 29.2 },
+    BUT: { label: 'GLP butano', G: 2.0, pcs: 34.0 },               // PCS ≈ 122 MJ/m³
+    OTRO: { label: 'Otro gas', G: 0.67, pcs: 10.35 }
   };
 
   const DEFAULT_CRITERIA = {

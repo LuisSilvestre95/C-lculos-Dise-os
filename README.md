@@ -22,14 +22,21 @@ Aplicación web para calcular y documentar redes de **gas natural y GLP** en **b
 
 Hay dos PDF de ejemplo en `docs/` (baja y media presión).
 
-## Fórmulas
+## Fórmulas (se eligen solas)
 
-- **Baja presión, Renouard lineal:** `ΔP[mbar] = 23 200 · S · Le[m] · Q^1.82 · D^-4.82`
-- **Media presión, Müller (por defecto, la misma de las hojas de cálculo de TODO GAS SYR):** `P1² − P2² = (Q · S^0.425 · Le^0.576 / (4.61·10⁻⁵ · D^2.725))^1.74`, con P absoluta en mbar.
-- **Media presión, Renouard cuadrática (alternativa):** `P1² − P2² = 48 600 · S · Le[km] · Q^1.82 · D^-4.82`, con P absoluta en bar.
-- **Velocidad:** `V = k · Q / (P_abs[bar] · D²)`, con k = 354 por defecto (editable).
-- `Le = L × 1.2`. El factor y los criterios de aceptación (Pmin, Vmax, % de pérdida) se pueden editar.
-- **Botón "Usar los mismos valores de mis Excel":** fija Patm = 723.6 mbar, k = 345 en baja y 354 en media, y Müller en media. Con esos valores, la app reproduce las hojas `Diseño_Baja_2.xlsx` y `Diseño_Media_Presion.xlsx` hasta 12 decimales (hay pruebas automáticas que lo verifican).
+| Régimen | Fórmula | Por qué |
+|---|---|---|
+| **Baja presión** (≤ 100 mbar) | Renouard lineal: `ΔP[mbar] = 23 200 · S · Le[m] · Q^1.82 · D^-4.82` | Es la fórmula normativa de baja presión |
+| **Media presión** (100–5000 mbar) | Müller: `P1² − P2² = (Q · S^0.425 · Le^0.576 / (4.61·10⁻⁵ · D^2.725))^1.74`, con P absoluta en mbar | Es la más cercana al método físico de referencia (Darcy-Weisbach con Colebrook): menos de 5 % de diferencia, frente a 8–28 % de Renouard cuadrática |
+
+- **Velocidad:** `V = 354 · Q / (P_abs[bar] · D²)`.
+- **Automático:**
+  - el régimen cambia solo según la presión que se escriba (más de 100 mbar pasa a media presión);
+  - la densidad la pone el tipo de gas y la presión típica de baja se ajusta (GN 23 mbar, GLP 28 mbar);
+  - la presión atmosférica sale del municipio;
+  - altitud, presión atmosférica y densidad solo aparecen cuando hace falta escribirlas (municipio "Personalizado" u "Otro gas").
+- **Criterios y ajustes** (plegados): presión mínima, velocidad máxima, pérdida máxima por tramo y factor de longitud equivalente (`Le = L × 1.2`).
+- El motor también reproduce las hojas de Excel anteriores (Patm 723.6, k 345). Las pruebas automáticas lo verifican hasta 12 decimales.
 
 ## Desarrollo
 
