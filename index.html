@@ -76,7 +76,7 @@
         <svg><use href="#i-down"/></svg><span><b>Baja presión</b><small>Renouard lineal · ≤ 100 mbar</small></span>
       </button>
       <button role="tab" class="mode-btn" data-mode="media" aria-selected="false">
-        <svg><use href="#i-up"/></svg><span><b>Media presión</b><small>Renouard cuadrática · 100–5000 mbar</small></span>
+        <svg><use href="#i-up"/></svg><span><b>Media presión</b><small>Müller · 100–5000 mbar</small></span>
       </button>
     </nav>
   </div>
@@ -139,13 +139,20 @@
             <input id="factorLE" type="text" inputmode="decimal" autocomplete="off">
             <small>Le = L × factor (accesorios)</small>
           </div>
+          <div class="field span-2">
+            <label for="method">Fórmula de cálculo</label>
+            <select id="method"></select>
+            <small id="methodHint"></small>
+          </div>
         </div>
+        <button class="chip-btn excel-btn" id="excelBtn" type="button"><svg><use href="#i-table"/></svg>Usar los mismos valores de mis Excel</button>
         <details class="criteria">
           <summary><svg><use href="#i-check"/></svg>Criterios de aceptación</summary>
-          <div class="fields three">
+          <div class="fields">
             <div class="field"><label for="pmin">Presión mínima final (mbar)</label><input id="pmin" type="text" inputmode="decimal"></div>
             <div class="field"><label for="vmax">Velocidad máxima (m/s)</label><input id="vmax" type="text" inputmode="decimal"></div>
             <div class="field"><label for="maxLoss">Pérdida máx. por tramo (%)</label><input id="maxLoss" type="text" inputmode="decimal"></div>
+            <div class="field"><label for="kv">Constante de velocidad</label><input id="kv" type="text" inputmode="decimal"><small>V = k · Q / (P<sub>abs</sub> · D²) · recomendado 354</small></div>
           </div>
         </details>
       </div>
@@ -241,7 +248,8 @@
     <summary class="card-title"><svg><use href="#i-book"/></svg>Fórmulas y bases de cálculo</summary>
     <div class="card-body formula-body">
       <div class="formula"><b>Baja presión — Renouard lineal</b><code>ΔP = 23 200 · S · Le · Q<sup>1.82</sup> · D<sup>−4.82</sup></code><small>ΔP en mbar · Le en m · Q en m³/h · D interno en mm</small></div>
-      <div class="formula"><b>Media presión — Renouard cuadrática</b><code>P₁² − P₂² = 48 600 · S · Le · Q<sup>1.82</sup> · D<sup>−4.82</sup></code><small>P absolutas en bar, Le en km (equivale a 4.86·10⁷ con P en mbar y Le en m)</small></div>
+      <div class="formula"><b>Media presión — Müller (por defecto)</b><code>P₁² − P₂² = ( Q · S<sup>0.425</sup> · Le<sup>0.576</sup> / (4.61·10⁻⁵ · D<sup>2.725</sup>) )<sup>1.74</sup></code><small>P absolutas en mbar · Le en m · Q en m³/h · D interno en mm</small></div>
+      <div class="formula"><b>Media presión — Renouard cuadrática (alternativa)</b><code>P₁² − P₂² = 48 600 · S · Le · Q<sup>1.82</sup> · D<sup>−4.82</sup></code><small>P absolutas en bar, Le en km (equivale a 4.86·10⁷ con P en mbar y Le en m)</small></div>
       <div class="formula"><b>Velocidad del gas</b><code>V = 354 · Q / (P<sub>abs</sub> · D²)</code><small>V en m/s · P absoluta en bar al final del tramo · D en mm</small></div>
       <div class="formula"><b>Longitud equivalente</b><code>Le = L × factor</code><small>Factor 1.2 = 20 % adicional por accesorios</small></div>
       <div class="formula"><b>Presión atmosférica (ISA)</b><code>P<sub>atm</sub> = 1013.25 · (1 − 2.25577·10⁻⁵ · h)<sup>5.25588</sup></code><small>h = altitud en m s. n. m.</small></div>
@@ -257,7 +265,7 @@
     <div>
       <p><b>TODO GAS SYR S.A.S.</b> · NIT 901.126.243-3 · Colombia</p>
       <p>Diseño y cálculos: Luis Silvestre · Ingeniero MP 041122-0809747 BYC — COPNIA</p>
-      <p>Tel. 322 361 8360 · 320 948 5534 · © 2026 · <span class="app-version">Versión 2.8</span></p>
+      <p>Tel. 322 361 8360 · 320 948 5534 · © 2026 · <span class="app-version">Versión 2.9</span></p>
     </div>
   </div>
 </footer>

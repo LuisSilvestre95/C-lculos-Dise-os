@@ -61,7 +61,8 @@
     const B = root.TGS_BRAND;
     const media = d.mode === 'media';
     const accent = media ? C.cyan : C.orange, accent2 = media ? C.navy : C.gold;
-    const regimen = media ? 'MEDIA PRESIÓN · RENOUARD CUADRÁTICA' : 'BAJA PRESIÓN · RENOUARD LINEAL';
+    const muller = media && d.params.method !== 'renouard';
+    const regimen = media ? (muller ? 'MEDIA PRESIÓN · FÓRMULA DE MÜLLER' : 'MEDIA PRESIÓN · RENOUARD CUADRÁTICA') : 'BAJA PRESIÓN · RENOUARD LINEAL';
     const s = d.res.summary, p = d.params, crit = p.crit;
     // El informe lleva por defecto el nombre del cliente; el campo "Informe" solo se usa si se cambia a mano.
     const ref = (d.client.ref || '').trim() || (d.client.name || '').trim() || ('TGS-' + d.dateISO.slice(0, 10).replace(/-/g, ''));
@@ -198,9 +199,10 @@
     });
     y = doc.lastAutoTable.finalY + 4;
     doc.setFont('helvetica', 'normal'); doc.setFontSize(6.8); doc.setTextColor(...C.muted);
+    const vtxt = `V = ${fmt(p.kv, 0)} · Q / (P abs · D²)`;
     const note = media
-      ? `Renouard cuadrática con presiones absolutas (P abs = P + ${fmt(p.patm, 1)} mbar). Le = L × ${fmt(p.factorLE, 2)}. Criterios: V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %${crit.pmin > 0 ? ` · P2 >= ${crit.pmin} mbar` : ''}.`
-      : `Renouard lineal: dP = 23 200 · S · Le · Q^1.82 · D^-4.82. Le = L × ${fmt(p.factorLE, 2)}. Criterios: Pf >= ${crit.pmin} mbar · V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %.`;
+      ? `${muller ? 'Müller: P1² - P2² = (Q · S^0.425 · Le^0.576 / (4.61e-5 · D^2.725))^1.74' : 'Renouard cuadrática: P1² - P2² = 48 600 · S · Le · Q^1.82 · D^-4.82'}, con P abs = P + ${fmt(p.patm, 1)} mbar. ${vtxt}. Le = L × ${fmt(p.factorLE, 2)}. Criterios: V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %${crit.pmin > 0 ? ` · P2 >= ${crit.pmin} mbar` : ''}.`
+      : `Renouard lineal: dP = 23 200 · S · Le · Q^1.82 · D^-4.82. ${vtxt}, P abs = Pf + ${fmt(p.patm, 1)} mbar. Le = L × ${fmt(p.factorLE, 2)}. Criterios: Pf >= ${crit.pmin} mbar · V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %.`;
     doc.text(T(note), M, y + 1, { maxWidth: W - 2 * M });
 
     /* ===== PÁGINA 2: GRÁFICAS + FIRMA ===== */

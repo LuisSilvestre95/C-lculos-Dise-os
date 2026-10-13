@@ -15,6 +15,9 @@
     RENOUARD_CUADRATICA: 4.86e7,
     // V[m/s] = 354 · Q[m³/h] / (P_abs[bar] · D[mm]²)
     VELOCIDAD: 354,
+    // Müller (media presión), tal como en las hojas de cálculo de TODO GAS SYR, con P en mbar absolutos y Le en m:
+    // P1² − P2² = ( Q · S^0.425 · Le^0.576 / (4.61·10⁻⁵ · D^2.725) )^1.74
+    MULLER_C: 4.61e-5, MULLER_S: 0.425, MULLER_L: 0.576, MULLER_D: 2.725, MULLER_EXP: 1.74,
     EXP_Q: 1.82,
     EXP_D: 4.82,
     MBAR_A_PSI: 0.0145037738,
@@ -144,8 +147,8 @@
   };
 
   const DEFAULT_CRITERIA = {
-    baja: { pi: 23, pmin: 18, vmax: 20, maxLossPct: 10 },
-    media: { pi: 140, pmin: 0, vmax: 20, maxLossPct: 10 }
+    baja: { pi: 23, pmin: 18, vmax: 20, maxLossPct: 10, kv: 354, method: 'renouard' },
+    media: { pi: 140, pmin: 0, vmax: 20, maxLossPct: 10, kv: 354, method: 'muller' }
   };
 
   /* ============================== UTILIDADES ============================== */
@@ -186,26 +189,37 @@
 
   /* ============================== FÓRMULAS ============================== */
   /** Tramo en baja presión (Renouard lineal). */
-  function lowTramo({ q, le, d, pi, G, patm }) {
+  function lowTramo({ q, le, d, pi, G, patm, kv = K.VELOCIDAD }) {
     const dp = K.RENOUARD_LINEAL * G * le * Math.pow(q, K.EXP_Q) * Math.pow(d, -K.EXP_D);
     const pf = pi - dp;
     const pAbsBar = Math.max(pf + patm, 1) / 1000;
-    const v = (K.VELOCIDAD * q) / (pAbsBar * d * d);
+    const v = (kv * q) / (pAbsBar * d * d);
     return { dp, pf, v, p1Abs: pi + patm, p2Abs: pf + patm };
   }
 
   /** Tramo en media presión (Renouard cuadrática con presiones absolutas). */
-  function mediumTramo({ q, le, d, pi, G, patm }) {
+  function mediumTramo({ q, le, d, pi, G, patm, kv = K.VELOCIDAD }) {
     const p1Abs = pi + patm;
     const term = K.RENOUARD_CUADRATICA * G * le * Math.pow(q, K.EXP_Q) * Math.pow(d, -K.EXP_D);
     const sq = p1Abs * p1Abs - term;
     const p2Abs = sq > 0 ? Math.sqrt(sq) : 0;
     const pf = p2Abs - patm;
-    const v = (K.VELOCIDAD * q) / (Math.max(p2Abs, 1) / 1000 * d * d);
+    const v = (kv * q) / (Math.max(p2Abs, 1) / 1000 * d * d);
     return { dp: pi - pf, pf, v, p1Abs, p2Abs };
   }
 
-  const tramoFn = (mode) => (mode === 'media' ? mediumTramo : lowTramo);
+  /** Tramo en media presión con la fórmula de Müller (presiones absolutas en mbar, Le en m, D en mm). */
+  function mullerTramo({ q, le, d, pi, G, patm, kv = K.VELOCIDAD }) {
+    const p1Abs = pi + patm;
+    const term = Math.pow(q * Math.pow(G, K.MULLER_S) * Math.pow(le, K.MULLER_L) / (K.MULLER_C * Math.pow(d, K.MULLER_D)), K.MULLER_EXP);
+    const sq = p1Abs * p1Abs - term;
+    const p2Abs = sq > 0 ? Math.sqrt(sq) : 0;
+    const pf = p2Abs - patm;
+    const v = (kv * q) / (Math.max(p2Abs, 1) / 1000 * d * d);
+    return { dp: pi - pf, pf, v, p1Abs, p2Abs };
+  }
+
+  const tramoFn = (mode, method) => (mode === 'media' ? (method === 'renouard' ? mediumTramo : mullerTramo) : lowTramo);
 
   function evaluate(r, crit, pi) {
     const lossPct = pi > 0 ? (r.dp / pi) * 100 : Infinity;
@@ -259,7 +273,7 @@
    */
   function calcNetwork(segments, p) {
     const mode = p.mode === 'media' ? 'media' : 'baja';
-    const f = tramoFn(mode);
+    const f = tramoFn(mode, p.method);
     const crit = p.crit;
     const demand = num(p.demand, 1);
     const segs = segments.map((s) => ({
@@ -281,7 +295,7 @@
         rows[i] = { ...base, valid: false, reason: !(s.q > 0) ? 'Caudal' : !(s.l > 0) ? 'Longitud' : !(s.d > 0) ? 'Diámetro' : 'Presión de entrada' };
         return;
       }
-      const r = f({ q: s.q, le, d: s.d, pi, G: p.G, patm: p.patm });
+      const r = f({ q: s.q, le, d: s.d, pi, G: p.G, patm: p.patm, kv: num(p.kv, K.VELOCIDAD) });
       const ev = evaluate(r, crit, pi);
       rows[i] = { ...base, ...r, valid: true, ...ev, psi: r.pf * K.MBAR_A_PSI, lossAbsPct: r.p1Abs > 0 ? (r.p1Abs - r.p2Abs) / r.p1Abs * 100 : 0 };
     });
@@ -344,7 +358,7 @@
     topo.order.forEach((i) => { const par = topo.parentOf[i]; up[i] = par >= 0 ? up[par] + num(segs[par].l) * fle : 0; });
     const budget = Math.max(num(p.pi) - Math.max(p.crit.pmin, 0), num(p.pi) * 0.02);
     const before = segs.map((s) => s.dn);
-    const f = tramoFn(p.mode);
+    const f = tramoFn(p.mode, p.method);
     topo.order.forEach((i) => {
       const s = segs[i];
       if (!sizable(s)) return;
@@ -352,7 +366,7 @@
       const allowed = path > 0 ? budget * (num(s.l) * fle) / path : budget;
       const sizes = PIPES[s.mat].sizes;
       const choice = sizes.find((sz) => {
-        const r = f({ q: num(s.q) * num(p.demand, 1), le: num(s.l) * fle, d: sz.di, pi: num(p.pi), G: p.G, patm: p.patm });
+        const r = f({ q: num(s.q) * num(p.demand, 1), le: num(s.l) * fle, d: sz.di, pi: num(p.pi), G: p.G, patm: p.patm, kv: num(p.kv, K.VELOCIDAD) });
         return r.dp <= allowed && r.v <= p.crit.vmax;
       }) || sizes[sizes.length - 1];
       s.dn = choice.dn;
@@ -385,7 +399,7 @@
   const api = {
     K, PIPES, CITIES, GASES, DEFAULT_CRITERIA,
     num, patmFromAltitude, nextNode, nodeIndex, getPipe, segmentDI,
-    lowTramo, mediumTramo, topology, calcNetwork, autoSize, flowFromPower
+    lowTramo, mediumTramo, mullerTramo, topology, calcNetwork, autoSize, flowFromPower
   };
   root.GasEngine = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

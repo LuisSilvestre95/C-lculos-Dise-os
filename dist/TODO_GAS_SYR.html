@@ -377,6 +377,8 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
   .res-table td.c-warn { background: var(--warn-bg) !important; } .res-table td.c-bad { background: var(--bad-bg) !important; }
 }
 
+.excel-btn { margin-top: 12px; }
+
 </style>
 <script>
   // Aplica el tema antes de pintar para evitar parpadeo.
@@ -439,7 +441,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
         <svg><use href="#i-down"/></svg><span><b>Baja presión</b><small>Renouard lineal · ≤ 100 mbar</small></span>
       </button>
       <button role="tab" class="mode-btn" data-mode="media" aria-selected="false">
-        <svg><use href="#i-up"/></svg><span><b>Media presión</b><small>Renouard cuadrática · 100–5000 mbar</small></span>
+        <svg><use href="#i-up"/></svg><span><b>Media presión</b><small>Müller · 100–5000 mbar</small></span>
       </button>
     </nav>
   </div>
@@ -502,13 +504,20 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
             <input id="factorLE" type="text" inputmode="decimal" autocomplete="off">
             <small>Le = L × factor (accesorios)</small>
           </div>
+          <div class="field span-2">
+            <label for="method">Fórmula de cálculo</label>
+            <select id="method"></select>
+            <small id="methodHint"></small>
+          </div>
         </div>
+        <button class="chip-btn excel-btn" id="excelBtn" type="button"><svg><use href="#i-table"/></svg>Usar los mismos valores de mis Excel</button>
         <details class="criteria">
           <summary><svg><use href="#i-check"/></svg>Criterios de aceptación</summary>
-          <div class="fields three">
+          <div class="fields">
             <div class="field"><label for="pmin">Presión mínima final (mbar)</label><input id="pmin" type="text" inputmode="decimal"></div>
             <div class="field"><label for="vmax">Velocidad máxima (m/s)</label><input id="vmax" type="text" inputmode="decimal"></div>
             <div class="field"><label for="maxLoss">Pérdida máx. por tramo (%)</label><input id="maxLoss" type="text" inputmode="decimal"></div>
+            <div class="field"><label for="kv">Constante de velocidad</label><input id="kv" type="text" inputmode="decimal"><small>V = k · Q / (P<sub>abs</sub> · D²) · recomendado 354</small></div>
           </div>
         </details>
       </div>
@@ -604,7 +613,8 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     <summary class="card-title"><svg><use href="#i-book"/></svg>Fórmulas y bases de cálculo</summary>
     <div class="card-body formula-body">
       <div class="formula"><b>Baja presión — Renouard lineal</b><code>ΔP = 23 200 · S · Le · Q<sup>1.82</sup> · D<sup>−4.82</sup></code><small>ΔP en mbar · Le en m · Q en m³/h · D interno en mm</small></div>
-      <div class="formula"><b>Media presión — Renouard cuadrática</b><code>P₁² − P₂² = 48 600 · S · Le · Q<sup>1.82</sup> · D<sup>−4.82</sup></code><small>P absolutas en bar, Le en km (equivale a 4.86·10⁷ con P en mbar y Le en m)</small></div>
+      <div class="formula"><b>Media presión — Müller (por defecto)</b><code>P₁² − P₂² = ( Q · S<sup>0.425</sup> · Le<sup>0.576</sup> / (4.61·10⁻⁵ · D<sup>2.725</sup>) )<sup>1.74</sup></code><small>P absolutas en mbar · Le en m · Q en m³/h · D interno en mm</small></div>
+      <div class="formula"><b>Media presión — Renouard cuadrática (alternativa)</b><code>P₁² − P₂² = 48 600 · S · Le · Q<sup>1.82</sup> · D<sup>−4.82</sup></code><small>P absolutas en bar, Le en km (equivale a 4.86·10⁷ con P en mbar y Le en m)</small></div>
       <div class="formula"><b>Velocidad del gas</b><code>V = 354 · Q / (P<sub>abs</sub> · D²)</code><small>V en m/s · P absoluta en bar al final del tramo · D en mm</small></div>
       <div class="formula"><b>Longitud equivalente</b><code>Le = L × factor</code><small>Factor 1.2 = 20 % adicional por accesorios</small></div>
       <div class="formula"><b>Presión atmosférica (ISA)</b><code>P<sub>atm</sub> = 1013.25 · (1 − 2.25577·10⁻⁵ · h)<sup>5.25588</sup></code><small>h = altitud en m s. n. m.</small></div>
@@ -620,7 +630,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     <div>
       <p><b>TODO GAS SYR S.A.S.</b> · NIT 901.126.243-3 · Colombia</p>
       <p>Diseño y cálculos: Luis Silvestre · Ingeniero MP 041122-0809747 BYC — COPNIA</p>
-      <p>Tel. 322 361 8360 · 320 948 5534 · © 2026 · <span class="app-version">Versión 2.8</span></p>
+      <p>Tel. 322 361 8360 · 320 948 5534 · © 2026 · <span class="app-version">Versión 2.9</span></p>
     </div>
   </div>
 </footer>
@@ -654,6 +664,9 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     RENOUARD_CUADRATICA: 4.86e7,
     // V[m/s] = 354 · Q[m³/h] / (P_abs[bar] · D[mm]²)
     VELOCIDAD: 354,
+    // Müller (media presión), tal como en las hojas de cálculo de TODO GAS SYR, con P en mbar absolutos y Le en m:
+    // P1² − P2² = ( Q · S^0.425 · Le^0.576 / (4.61·10⁻⁵ · D^2.725) )^1.74
+    MULLER_C: 4.61e-5, MULLER_S: 0.425, MULLER_L: 0.576, MULLER_D: 2.725, MULLER_EXP: 1.74,
     EXP_Q: 1.82,
     EXP_D: 4.82,
     MBAR_A_PSI: 0.0145037738,
@@ -783,8 +796,8 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
   };
 
   const DEFAULT_CRITERIA = {
-    baja: { pi: 23, pmin: 18, vmax: 20, maxLossPct: 10 },
-    media: { pi: 140, pmin: 0, vmax: 20, maxLossPct: 10 }
+    baja: { pi: 23, pmin: 18, vmax: 20, maxLossPct: 10, kv: 354, method: 'renouard' },
+    media: { pi: 140, pmin: 0, vmax: 20, maxLossPct: 10, kv: 354, method: 'muller' }
   };
 
   /* ============================== UTILIDADES ============================== */
@@ -825,26 +838,37 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
 
   /* ============================== FÓRMULAS ============================== */
   /** Tramo en baja presión (Renouard lineal). */
-  function lowTramo({ q, le, d, pi, G, patm }) {
+  function lowTramo({ q, le, d, pi, G, patm, kv = K.VELOCIDAD }) {
     const dp = K.RENOUARD_LINEAL * G * le * Math.pow(q, K.EXP_Q) * Math.pow(d, -K.EXP_D);
     const pf = pi - dp;
     const pAbsBar = Math.max(pf + patm, 1) / 1000;
-    const v = (K.VELOCIDAD * q) / (pAbsBar * d * d);
+    const v = (kv * q) / (pAbsBar * d * d);
     return { dp, pf, v, p1Abs: pi + patm, p2Abs: pf + patm };
   }
 
   /** Tramo en media presión (Renouard cuadrática con presiones absolutas). */
-  function mediumTramo({ q, le, d, pi, G, patm }) {
+  function mediumTramo({ q, le, d, pi, G, patm, kv = K.VELOCIDAD }) {
     const p1Abs = pi + patm;
     const term = K.RENOUARD_CUADRATICA * G * le * Math.pow(q, K.EXP_Q) * Math.pow(d, -K.EXP_D);
     const sq = p1Abs * p1Abs - term;
     const p2Abs = sq > 0 ? Math.sqrt(sq) : 0;
     const pf = p2Abs - patm;
-    const v = (K.VELOCIDAD * q) / (Math.max(p2Abs, 1) / 1000 * d * d);
+    const v = (kv * q) / (Math.max(p2Abs, 1) / 1000 * d * d);
     return { dp: pi - pf, pf, v, p1Abs, p2Abs };
   }
 
-  const tramoFn = (mode) => (mode === 'media' ? mediumTramo : lowTramo);
+  /** Tramo en media presión con la fórmula de Müller (presiones absolutas en mbar, Le en m, D en mm). */
+  function mullerTramo({ q, le, d, pi, G, patm, kv = K.VELOCIDAD }) {
+    const p1Abs = pi + patm;
+    const term = Math.pow(q * Math.pow(G, K.MULLER_S) * Math.pow(le, K.MULLER_L) / (K.MULLER_C * Math.pow(d, K.MULLER_D)), K.MULLER_EXP);
+    const sq = p1Abs * p1Abs - term;
+    const p2Abs = sq > 0 ? Math.sqrt(sq) : 0;
+    const pf = p2Abs - patm;
+    const v = (kv * q) / (Math.max(p2Abs, 1) / 1000 * d * d);
+    return { dp: pi - pf, pf, v, p1Abs, p2Abs };
+  }
+
+  const tramoFn = (mode, method) => (mode === 'media' ? (method === 'renouard' ? mediumTramo : mullerTramo) : lowTramo);
 
   function evaluate(r, crit, pi) {
     const lossPct = pi > 0 ? (r.dp / pi) * 100 : Infinity;
@@ -898,7 +922,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
    */
   function calcNetwork(segments, p) {
     const mode = p.mode === 'media' ? 'media' : 'baja';
-    const f = tramoFn(mode);
+    const f = tramoFn(mode, p.method);
     const crit = p.crit;
     const demand = num(p.demand, 1);
     const segs = segments.map((s) => ({
@@ -920,7 +944,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
         rows[i] = { ...base, valid: false, reason: !(s.q > 0) ? 'Caudal' : !(s.l > 0) ? 'Longitud' : !(s.d > 0) ? 'Diámetro' : 'Presión de entrada' };
         return;
       }
-      const r = f({ q: s.q, le, d: s.d, pi, G: p.G, patm: p.patm });
+      const r = f({ q: s.q, le, d: s.d, pi, G: p.G, patm: p.patm, kv: num(p.kv, K.VELOCIDAD) });
       const ev = evaluate(r, crit, pi);
       rows[i] = { ...base, ...r, valid: true, ...ev, psi: r.pf * K.MBAR_A_PSI, lossAbsPct: r.p1Abs > 0 ? (r.p1Abs - r.p2Abs) / r.p1Abs * 100 : 0 };
     });
@@ -983,7 +1007,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     topo.order.forEach((i) => { const par = topo.parentOf[i]; up[i] = par >= 0 ? up[par] + num(segs[par].l) * fle : 0; });
     const budget = Math.max(num(p.pi) - Math.max(p.crit.pmin, 0), num(p.pi) * 0.02);
     const before = segs.map((s) => s.dn);
-    const f = tramoFn(p.mode);
+    const f = tramoFn(p.mode, p.method);
     topo.order.forEach((i) => {
       const s = segs[i];
       if (!sizable(s)) return;
@@ -991,7 +1015,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
       const allowed = path > 0 ? budget * (num(s.l) * fle) / path : budget;
       const sizes = PIPES[s.mat].sizes;
       const choice = sizes.find((sz) => {
-        const r = f({ q: num(s.q) * num(p.demand, 1), le: num(s.l) * fle, d: sz.di, pi: num(p.pi), G: p.G, patm: p.patm });
+        const r = f({ q: num(s.q) * num(p.demand, 1), le: num(s.l) * fle, d: sz.di, pi: num(p.pi), G: p.G, patm: p.patm, kv: num(p.kv, K.VELOCIDAD) });
         return r.dp <= allowed && r.v <= p.crit.vmax;
       }) || sizes[sizes.length - 1];
       s.dn = choice.dn;
@@ -1024,7 +1048,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
   const api = {
     K, PIPES, CITIES, GASES, DEFAULT_CRITERIA,
     num, patmFromAltitude, nextNode, nodeIndex, getPipe, segmentDI,
-    lowTramo, mediumTramo, topology, calcNetwork, autoSize, flowFromPower
+    lowTramo, mediumTramo, mullerTramo, topology, calcNetwork, autoSize, flowFromPower
   };
   root.GasEngine = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
@@ -1323,7 +1347,8 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     const B = root.TGS_BRAND;
     const media = d.mode === 'media';
     const accent = media ? C.cyan : C.orange, accent2 = media ? C.navy : C.gold;
-    const regimen = media ? 'MEDIA PRESIÓN · RENOUARD CUADRÁTICA' : 'BAJA PRESIÓN · RENOUARD LINEAL';
+    const muller = media && d.params.method !== 'renouard';
+    const regimen = media ? (muller ? 'MEDIA PRESIÓN · FÓRMULA DE MÜLLER' : 'MEDIA PRESIÓN · RENOUARD CUADRÁTICA') : 'BAJA PRESIÓN · RENOUARD LINEAL';
     const s = d.res.summary, p = d.params, crit = p.crit;
     // El informe lleva por defecto el nombre del cliente; el campo "Informe" solo se usa si se cambia a mano.
     const ref = (d.client.ref || '').trim() || (d.client.name || '').trim() || ('TGS-' + d.dateISO.slice(0, 10).replace(/-/g, ''));
@@ -1460,9 +1485,10 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     });
     y = doc.lastAutoTable.finalY + 4;
     doc.setFont('helvetica', 'normal'); doc.setFontSize(6.8); doc.setTextColor(...C.muted);
+    const vtxt = `V = ${fmt(p.kv, 0)} · Q / (P abs · D²)`;
     const note = media
-      ? `Renouard cuadrática con presiones absolutas (P abs = P + ${fmt(p.patm, 1)} mbar). Le = L × ${fmt(p.factorLE, 2)}. Criterios: V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %${crit.pmin > 0 ? ` · P2 >= ${crit.pmin} mbar` : ''}.`
-      : `Renouard lineal: dP = 23 200 · S · Le · Q^1.82 · D^-4.82. Le = L × ${fmt(p.factorLE, 2)}. Criterios: Pf >= ${crit.pmin} mbar · V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %.`;
+      ? `${muller ? 'Müller: P1² - P2² = (Q · S^0.425 · Le^0.576 / (4.61e-5 · D^2.725))^1.74' : 'Renouard cuadrática: P1² - P2² = 48 600 · S · Le · Q^1.82 · D^-4.82'}, con P abs = P + ${fmt(p.patm, 1)} mbar. ${vtxt}. Le = L × ${fmt(p.factorLE, 2)}. Criterios: V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %${crit.pmin > 0 ? ` · P2 >= ${crit.pmin} mbar` : ''}.`
+      : `Renouard lineal: dP = 23 200 · S · Le · Q^1.82 · D^-4.82. ${vtxt}, P abs = Pf + ${fmt(p.patm, 1)} mbar. Le = L × ${fmt(p.factorLE, 2)}. Criterios: Pf >= ${crit.pmin} mbar · V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %.`;
     doc.text(T(note), M, y + 1, { maxWidth: W - 2 * M });
 
     /* ===== PÁGINA 2: GRÁFICAS + FIRMA ===== */
@@ -1567,7 +1593,8 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     ['baja', 'media'].forEach((m) => {
       const src = s[m] || {};
       out[m] = { ...d[m] };
-      ['pi', 'pmin', 'vmax', 'maxLossPct'].forEach((k) => { if (src[k] != null) out[m][k] = str(src[k], 20); });
+      ['pi', 'pmin', 'vmax', 'maxLossPct', 'kv'].forEach((k) => { if (src[k] != null) out[m][k] = str(src[k], 20); });
+      if (m === 'media') out[m].method = src.method === 'renouard' ? 'renouard' : 'muller';
       out[m].segs = (Array.isArray(src.segs) ? src.segs.slice(0, MAX_SEGS) : []).filter((g) => g && typeof g === 'object').map((g) => ({
         id: newId(), ini: str(g.ini || 'A', 4).toUpperCase().replace(/[^A-Z0-9]/g, ''), fin: str(g.fin || 'B', 4).toUpperCase().replace(/[^A-Z0-9]/g, ''),
         q: str(g.q, 20), l: str(g.l, 20), mat: E.PIPES[g.mat] ? g.mat : 'PEALPE', dn: str(g.dn, 12), di: str(g.di, 20)
@@ -1586,6 +1613,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
   const M = () => state[state.mode];
   const params = (extra = {}) => ({
     mode: state.mode, G: E.num(state.G, 0.67), patm: E.num(state.patm, 1013.25), pi: E.num(M().pi), factorLE: E.num(state.factorLE, 1.2),
+    method: state.mode === 'media' ? (M().method === 'renouard' ? 'renouard' : 'muller') : 'renouard', kv: E.num(M().kv, 354),
     crit: { pmin: E.num(M().pmin), vmax: E.num(M().vmax, 20), maxLossPct: E.num(M().maxLossPct, 10) }, demand: 1, ...extra
   });
 
@@ -1637,7 +1665,15 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     $('#G').value = state.G;
     $('#factorLE').value = state.factorLE;
     const m = M();
-    $('#pi').value = m.pi; $('#pmin').value = m.pmin; $('#vmax').value = m.vmax; $('#maxLoss').value = m.maxLossPct;
+    $('#pi').value = m.pi; $('#pmin').value = m.pmin; $('#vmax').value = m.vmax; $('#maxLoss').value = m.maxLossPct; $('#kv').value = m.kv ?? 354;
+    const ms = $('#method');
+    ms.innerHTML = state.mode === 'baja'
+      ? '<option value="renouard">Renouard lineal (baja presión)</option>'
+      : '<option value="muller">Müller · como en mis hojas de cálculo</option><option value="renouard">Renouard cuadrática</option>';
+    ms.value = state.mode === 'baja' ? 'renouard' : (m.method === 'renouard' ? 'renouard' : 'muller');
+    ms.disabled = state.mode === 'baja';
+    $('#methodHint').textContent = state.mode === 'baja' ? 'ΔP = 23 200 · S · Le · Q^1.82 · D^-4.82'
+      : ms.value === 'muller' ? 'P1² − P2² = (Q·S^0.425·Le^0.576 / (4.61e-5·D^2.725))^1.74' : 'P1² − P2² = 48 600 · S · Le · Q^1.82 · D^-4.82';
     $('#piHint').textContent = state.mode === 'baja' ? 'Típico residencial: 21–23 mbar (GN) · 28–37 mbar (GLP)' : 'Salida del regulador de primera etapa (100–5000 mbar)';
     $$('[data-client]').forEach((el) => { el.value = state.client[el.dataset.client] || ''; });
     refPlaceholder();
@@ -1671,7 +1707,16 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     });
     $('#G').addEventListener('input', (e) => { state.G = e.target.value; const g = E.GASES[state.gas]; if (g && E.num(e.target.value) !== g.G) { state.gas = 'OTRO'; $('#gas').value = 'OTRO'; } changed(); });
     $('#factorLE').addEventListener('input', (e) => { state.factorLE = e.target.value; changed(); });
-    [['pi', 'pi'], ['pmin', 'pmin'], ['vmax', 'vmax'], ['maxLoss', 'maxLossPct']].forEach(([id, key]) => $('#' + id).addEventListener('input', (e) => { M()[key] = e.target.value; changed(); }));
+    $('#method').addEventListener('change', (e) => { if (state.mode === 'media') { M().method = e.target.value; paintParams(); changed(); } });
+    $('#excelBtn').addEventListener('click', () => {
+      // Valores fijos de las hojas de Excel de TODO GAS SYR: Patm 723.6 mbar, Le = L × 1.2, S = 0.67, k = 345 (baja) / 354 (media), Müller en media.
+      state.city = 'custom'; state.patm = 723.6; state.altitude = Math.round((1 - Math.pow(723.6 / 1013.25, 1 / 5.25588)) / 2.25577e-5);
+      state.factorLE = 1.2; state.gas = 'GN'; state.G = 0.67;
+      state.baja.kv = 345; state.media.kv = 354; state.media.method = 'muller';
+      paintParams(); changed();
+      toast('Listo: Patm 723.6 mbar, Le = L×1.2, k 345 (baja) / 354 (media) y Müller en media, igual que en sus Excel', 'ok', 5000);
+    });
+    [['pi', 'pi'], ['pmin', 'pmin'], ['vmax', 'vmax'], ['maxLoss', 'maxLossPct'], ['kv', 'kv']].forEach(([id, key]) => $('#' + id).addEventListener('input', (e) => { M()[key] = e.target.value; changed(); }));
     $$('[data-client]').forEach((el) => el.addEventListener('input', () => { state.client[el.dataset.client] = el.value; persist(); refPlaceholder(); }));
   }
 
@@ -2097,7 +2142,7 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
     const q = (v) => { let t = String(v ?? ''); if (/^[=+\-@\t\r]/.test(t) && !/^-?\d+(,\d+)?$/.test(t)) t = "'" + t; return `"${t.replace(/"/g, '""')}"`; };
     const L = [];
     L.push(['TODO GAS SYR S.A.S. - NIT 901.126.243-3'].map(q).join(';'));
-    L.push([`Memoria de cálculo - ${d.mode === 'baja' ? 'Baja presión (Renouard lineal)' : 'Media presión (Renouard cuadrática)'}`].map(q).join(';'));
+    L.push([`Memoria de cálculo - ${d.mode === 'baja' ? 'Baja presión (Renouard lineal)' : d.params.method === 'renouard' ? 'Media presión (Renouard cuadrática)' : 'Media presión (Müller)'}`, `Constante de velocidad ${d.params.kv}`].map(q).join(';'));
     L.push(['Cliente', d.client.name, 'Cédula/NIT', d.client.id].map(q).join(';'));
     L.push(['Dirección', d.client.address, 'Municipio', d.client.city].map(q).join(';'));
     L.push(['Fecha', d.date, 'Informe', (d.client.ref || '').trim() || d.client.name].map(q).join(';'));

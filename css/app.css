@@ -360,3 +360,5 @@ input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
   .res-table td.c-warn, .res-table td.c-bad { border-radius: 0; }
   .res-table td.c-warn { background: var(--warn-bg) !important; } .res-table td.c-bad { background: var(--bad-bg) !important; }
 }
+
+.excel-btn { margin-top: 12px; }

@@ -45,7 +45,8 @@
     ['baja', 'media'].forEach((m) => {
       const src = s[m] || {};
       out[m] = { ...d[m] };
-      ['pi', 'pmin', 'vmax', 'maxLossPct'].forEach((k) => { if (src[k] != null) out[m][k] = str(src[k], 20); });
+      ['pi', 'pmin', 'vmax', 'maxLossPct', 'kv'].forEach((k) => { if (src[k] != null) out[m][k] = str(src[k], 20); });
+      if (m === 'media') out[m].method = src.method === 'renouard' ? 'renouard' : 'muller';
       out[m].segs = (Array.isArray(src.segs) ? src.segs.slice(0, MAX_SEGS) : []).filter((g) => g && typeof g === 'object').map((g) => ({
         id: newId(), ini: str(g.ini || 'A', 4).toUpperCase().replace(/[^A-Z0-9]/g, ''), fin: str(g.fin || 'B', 4).toUpperCase().replace(/[^A-Z0-9]/g, ''),
         q: str(g.q, 20), l: str(g.l, 20), mat: E.PIPES[g.mat] ? g.mat : 'PEALPE', dn: str(g.dn, 12), di: str(g.di, 20)
@@ -64,6 +65,7 @@
   const M = () => state[state.mode];
   const params = (extra = {}) => ({
     mode: state.mode, G: E.num(state.G, 0.67), patm: E.num(state.patm, 1013.25), pi: E.num(M().pi), factorLE: E.num(state.factorLE, 1.2),
+    method: state.mode === 'media' ? (M().method === 'renouard' ? 'renouard' : 'muller') : 'renouard', kv: E.num(M().kv, 354),
     crit: { pmin: E.num(M().pmin), vmax: E.num(M().vmax, 20), maxLossPct: E.num(M().maxLossPct, 10) }, demand: 1, ...extra
   });
 
@@ -115,7 +117,15 @@
     $('#G').value = state.G;
     $('#factorLE').value = state.factorLE;
     const m = M();
-    $('#pi').value = m.pi; $('#pmin').value = m.pmin; $('#vmax').value = m.vmax; $('#maxLoss').value = m.maxLossPct;
+    $('#pi').value = m.pi; $('#pmin').value = m.pmin; $('#vmax').value = m.vmax; $('#maxLoss').value = m.maxLossPct; $('#kv').value = m.kv ?? 354;
+    const ms = $('#method');
+    ms.innerHTML = state.mode === 'baja'
+      ? '<option value="renouard">Renouard lineal (baja presión)</option>'
+      : '<option value="muller">Müller · como en mis hojas de cálculo</option><option value="renouard">Renouard cuadrática</option>';
+    ms.value = state.mode === 'baja' ? 'renouard' : (m.method === 'renouard' ? 'renouard' : 'muller');
+    ms.disabled = state.mode === 'baja';
+    $('#methodHint').textContent = state.mode === 'baja' ? 'ΔP = 23 200 · S · Le · Q^1.82 · D^-4.82'
+      : ms.value === 'muller' ? 'P1² − P2² = (Q·S^0.425·Le^0.576 / (4.61e-5·D^2.725))^1.74' : 'P1² − P2² = 48 600 · S · Le · Q^1.82 · D^-4.82';
     $('#piHint').textContent = state.mode === 'baja' ? 'Típico residencial: 21–23 mbar (GN) · 28–37 mbar (GLP)' : 'Salida del regulador de primera etapa (100–5000 mbar)';
     $$('[data-client]').forEach((el) => { el.value = state.client[el.dataset.client] || ''; });
     refPlaceholder();
@@ -149,7 +159,16 @@
     });
     $('#G').addEventListener('input', (e) => { state.G = e.target.value; const g = E.GASES[state.gas]; if (g && E.num(e.target.value) !== g.G) { state.gas = 'OTRO'; $('#gas').value = 'OTRO'; } changed(); });
     $('#factorLE').addEventListener('input', (e) => { state.factorLE = e.target.value; changed(); });
-    [['pi', 'pi'], ['pmin', 'pmin'], ['vmax', 'vmax'], ['maxLoss', 'maxLossPct']].forEach(([id, key]) => $('#' + id).addEventListener('input', (e) => { M()[key] = e.target.value; changed(); }));
+    $('#method').addEventListener('change', (e) => { if (state.mode === 'media') { M().method = e.target.value; paintParams(); changed(); } });
+    $('#excelBtn').addEventListener('click', () => {
+      // Valores fijos de las hojas de Excel de TODO GAS SYR: Patm 723.6 mbar, Le = L × 1.2, S = 0.67, k = 345 (baja) / 354 (media), Müller en media.
+      state.city = 'custom'; state.patm = 723.6; state.altitude = Math.round((1 - Math.pow(723.6 / 1013.25, 1 / 5.25588)) / 2.25577e-5);
+      state.factorLE = 1.2; state.gas = 'GN'; state.G = 0.67;
+      state.baja.kv = 345; state.media.kv = 354; state.media.method = 'muller';
+      paintParams(); changed();
+      toast('Listo: Patm 723.6 mbar, Le = L×1.2, k 345 (baja) / 354 (media) y Müller en media, igual que en sus Excel', 'ok', 5000);
+    });
+    [['pi', 'pi'], ['pmin', 'pmin'], ['vmax', 'vmax'], ['maxLoss', 'maxLossPct'], ['kv', 'kv']].forEach(([id, key]) => $('#' + id).addEventListener('input', (e) => { M()[key] = e.target.value; changed(); }));
     $$('[data-client]').forEach((el) => el.addEventListener('input', () => { state.client[el.dataset.client] = el.value; persist(); refPlaceholder(); }));
   }
 
@@ -575,7 +594,7 @@
     const q = (v) => { let t = String(v ?? ''); if (/^[=+\-@\t\r]/.test(t) && !/^-?\d+(,\d+)?$/.test(t)) t = "'" + t; return `"${t.replace(/"/g, '""')}"`; };
     const L = [];
     L.push(['TODO GAS SYR S.A.S. - NIT 901.126.243-3'].map(q).join(';'));
-    L.push([`Memoria de cálculo - ${d.mode === 'baja' ? 'Baja presión (Renouard lineal)' : 'Media presión (Renouard cuadrática)'}`].map(q).join(';'));
+    L.push([`Memoria de cálculo - ${d.mode === 'baja' ? 'Baja presión (Renouard lineal)' : d.params.method === 'renouard' ? 'Media presión (Renouard cuadrática)' : 'Media presión (Müller)'}`, `Constante de velocidad ${d.params.kv}`].map(q).join(';'));
     L.push(['Cliente', d.client.name, 'Cédula/NIT', d.client.id].map(q).join(';'));
     L.push(['Dirección', d.client.address, 'Municipio', d.client.city].map(q).join(';'));
     L.push(['Fecha', d.date, 'Informe', (d.client.ref || '').trim() || d.client.name].map(q).join(';'));

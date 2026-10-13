@@ -116,7 +116,7 @@ test('Proyecto real (José Ricardo Mendoza, Garagoa): coincide con la memoria en
   close(res.rows[0].v, 16.16, 1e-3);
   assert.equal(res.summary.ok, true);
   assert.equal(res.warnings.length, 0, 'un redondeo de 0.01 m³/h no es un error de balance');
-  const m = E.calcNetwork([S('A', 'B', 9.97, 10.4)], { ...p, mode: 'media', pi: 350, crit: { pmin: 0, vmax: 20, maxLossPct: 10 } }).rows[0];
+  const m = E.calcNetwork([S('A', 'B', 9.97, 10.4)], { ...p, mode: 'media', method: 'renouard', pi: 350, crit: { pmin: 0, vmax: 20, maxLossPct: 10 } }).rows[0];
   assert.equal(m.pf.toFixed(2), '332.09'); assert.equal(m.v.toFixed(2), '11.86'); assert.equal(m.lossPct.toFixed(2), '5.12');
 });
 
@@ -128,6 +128,36 @@ test('Datos vacíos, cero, negativos o texto no rompen el cálculo', () => {
   }
   assert.equal(E.calcNetwork([], p).summary.total, 0);
   assert.ok(Number.isFinite(E.calcNetwork([{ ini: 'A', fin: 'B', q: '2,5', l: '3', mat: 'PEALPE', dn: '1620' }], p).rows[0].pf), 'acepta coma decimal');
+});
+
+test('Excel Diseño_Baja_2 (hoja Baja Presión): mismos valores con Patm 723.6 y constante 345', () => {
+  // Fila 8: Q 1.52, L 40, D 16, Pi 23 → I8 2.51131, J8 20.48869, K8 2.75295
+  const r = E.calcNetwork([{ ini: 'A', fin: 'B', q: 1.52, l: 40, mat: 'CUSTOM', di: 16 }],
+    { mode: 'baja', G: 0.67, patm: 723.6, factorLE: 1.2, pi: 23, kv: 345, crit }).rows[0];
+  close(r.dp, 2.5113141207263467, 1e-12); close(r.pf, 20.488685879273653, 1e-12); close(r.v, 2.752948054275822, 1e-12);
+});
+
+test('Excel Diseño_Media_Presion (Müller): mismos valores, encadenando tramos', () => {
+  const p = { mode: 'media', method: 'muller', G: 0.67, patm: 723.6, factorLE: 1.2, pi: 140, kv: 354, crit: { pmin: 0, vmax: 20, maxLossPct: 10 } };
+  const C = (ini, fin, q, l, di) => ({ ini, fin, q, l, mat: 'CUSTOM', di });
+  const res = E.calcNetwork([C('A', 'B', 3.63, 2.55, 16), C('B', 'C', 3.42, 11.28, 20), C('C', 'D', 1.35, 0.9, 16), C('D', 'E', 1.35, 0.05, 12)], p);
+  const [ab, bc, cd, de] = res.rows;
+  close(ab.p2Abs, 862.7466508266393, 1e-12); close(ab.pf, 139.1466508266393, 1e-12); close(ab.v, 5.818173122075257, 1e-12);
+  close(ab.lossPct / 100, 0.006095351238290699, 1e-9);
+  close(bc.pf, 137.9599949658067, 1e-12); close(bc.v, 3.5130461229459975, 1e-12);
+  close(cd.pf, 137.906145023499, 1e-12); close(de.pf, 137.8945167710856, 1e-12); close(de.v, 3.8523170320790925, 1e-12);
+  // Segundo libro: A-B 1.52 m³/h, 50 m, D 12, 150 mbar → P2 135.5653, V 4.34918, pérdida 9.623 %
+  const x = E.calcNetwork([C('A', 'B', 1.52, 50, 12)], { ...p, pi: 150 }).rows[0];
+  close(x.pf, 135.56531756398692, 1e-12); close(x.v, 4.3491823869954755, 1e-12); close(x.lossPct / 100, 0.09623121624008718, 1e-9);
+});
+
+test('Müller y Renouard cuadrática coinciden dentro de un 20 % (validación cruzada)', () => {
+  const base = { mode: 'media', G: 0.67, patm: 830, factorLE: 1.2, pi: 140, crit: { pmin: 0, vmax: 20, maxLossPct: 10 } };
+  for (const [q, l, di] of [[3.63, 2.55, 16], [10, 30, 26.6], [24, 30, 34.5], [1.5, 50, 12]]) {
+    const m = E.calcNetwork([{ ini: 'A', fin: 'B', q, l, mat: 'CUSTOM', di }], { ...base, method: 'muller' }).rows[0].dp;
+    const r = E.calcNetwork([{ ini: 'A', fin: 'B', q, l, mat: 'CUSTOM', di }], { ...base, method: 'renouard' }).rows[0].dp;
+    assert.ok(Math.abs(m - r) / r < 0.20, `Q ${q}: Müller ${m.toFixed(3)} vs Renouard ${r.toFixed(3)}`);
+  }
 });
 
 test('Caudal desde potencia', () => {

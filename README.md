@@ -24,10 +24,12 @@ Hay dos PDF de ejemplo en `docs/` (baja y media presión).
 
 ## Fórmulas
 
-- Baja presión: `ΔP[mbar] = 23 200 · S · Le[m] · Q^1.82 · D^-4.82`
-- Media presión: `P1² − P2² = 48 600 · S · Le[km] · Q^1.82 · D^-4.82`, con P absoluta en bar. Con P en mbar y Le en m, la constante es `4.86·10⁷`.
-- Velocidad: `V = 354 · Q / (P_abs[bar] · D²)`
+- **Baja presión, Renouard lineal:** `ΔP[mbar] = 23 200 · S · Le[m] · Q^1.82 · D^-4.82`
+- **Media presión, Müller (por defecto, la misma de las hojas de cálculo de TODO GAS SYR):** `P1² − P2² = (Q · S^0.425 · Le^0.576 / (4.61·10⁻⁵ · D^2.725))^1.74`, con P absoluta en mbar.
+- **Media presión, Renouard cuadrática (alternativa):** `P1² − P2² = 48 600 · S · Le[km] · Q^1.82 · D^-4.82`, con P absoluta en bar.
+- **Velocidad:** `V = k · Q / (P_abs[bar] · D²)`, con k = 354 por defecto (editable).
 - `Le = L × 1.2`. El factor y los criterios de aceptación (Pmin, Vmax, % de pérdida) se pueden editar.
+- **Botón "Usar los mismos valores de mis Excel":** fija Patm = 723.6 mbar, k = 345 en baja y 354 en media, y Müller en media. Con esos valores, la app reproduce las hojas `Diseño_Baja_2.xlsx` y `Diseño_Media_Presion.xlsx` hasta 12 decimales (hay pruebas automáticas que lo verifican).
 
 ## Desarrollo
 
