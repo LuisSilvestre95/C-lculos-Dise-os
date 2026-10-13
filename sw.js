@@ -1,10 +1,10 @@
 /* Service worker: la aplicación funciona sin conexión después de la primera visita.
    Siempre busca primero la versión nueva en internet; la copia guardada solo se usa sin conexión. */
-const CACHE = 'tgs-v3.0.0';
+const CACHE = 'tgs-v3.1.0';
 const SHELL = [
   './', 'index.html', 'css/app.css', 'js/engine.js', 'js/charts.js', 'js/pdf.js', 'js/app.js',
   'assets/flame.png', 'assets/brand.js', 'vendor/jspdf.umd.min.js', 'vendor/jspdf.plugin.autotable.min.js',
-  'manifest.webmanifest', 'icons/icon-32.png', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'
+  'manifest.webmanifest', 'assets/flame.svg', 'icons/favicon.ico', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-192.png', 'icons/maskable-512.png'
 ];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));

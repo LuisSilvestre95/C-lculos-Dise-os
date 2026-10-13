@@ -21,11 +21,14 @@ writeFileSync(join(ROOT, 'assets/brand.js'),
 let html = read('index.html');
 html = html.replace('<html lang="es">', '<html lang="es" data-single-file>');
 html = html.replace(/<link rel="manifest"[^>]*>\n?/, '');
-html = html.replace(/<link rel="icon"[^>]*>/, `<link rel="icon" type="image/png" href="${b64('icons/icon-32.png')}">`);
+// Íconos: SVG vectorial (nítido a cualquier tamaño) y PNG de respaldo, embebidos.
+html = html.replace(/(<link rel="icon"[^>]*>\n?)+/, () => `<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,${readFileSync(join(ROOT, 'assets/flame.svg')).toString('base64')}">\n<link rel="icon" type="image/png" sizes="192x192" href="${b64('icons/icon-192.png')}">\n`);
 html = html.replace(/<link rel="apple-touch-icon"[^>]*>/, `<link rel="apple-touch-icon" href="${b64('icons/icon-180.png')}">`);
 html = html.replace('<link rel="stylesheet" href="css/app.css">', () => `<style>\n${read('css/app.css')}\n</style>`);
 const flame = b64('assets/flame.png');
 html = html.replaceAll('src="assets/flame.png"', `src="${flame}"`);
+const flameSvg = 'data:image/svg+xml;base64,' + readFileSync(join(ROOT, 'assets/flame.svg')).toString('base64');
+html = html.replaceAll('src="assets/flame.svg"', `src="${flameSvg}"`);
 for (const f of ['engine', 'charts', 'pdf', 'app']) {
   html = html.replace(`<script src="js/${f}.js"></script>`, () => `<script>\n${safe(read(`js/${f}.js`))}\n</script>`);
 }

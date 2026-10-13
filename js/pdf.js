@@ -73,13 +73,16 @@
     });
     doc.setLineHeightFactor(1.25);
 
+    // Proporción real de la imagen de la llama (ancho / alto), para no deformarla.
+    let ratio = null;
+    const flameRatio = () => { if (ratio == null) { try { const ip = doc.getImageProperties(B.flame); ratio = ip.width / ip.height; } catch (e) { ratio = 0.85; } } return ratio; };
     /* Encabezado completo (página 1) */
     function headerFull() {
       hGrad(doc, 0, 0, W, 32, [[0, C.navy0], [0.55, C.navy], [1, C.navy2]]);
       // brillo dorado
       doc.setGState(new doc.GState({ opacity: 0.16 })); doc.setFillColor(...C.gold); doc.circle(W - 40, -6, 34, 'F'); doc.setGState(new doc.GState({ opacity: 1 }));
       hGrad(doc, 0, 32, W, 1.6, [[0, C.cyan], [0.55, C.gold], [1, C.orange]]);
-      if (B && B.flame) doc.addImage(B.flame, 'PNG', M, 4.5, 20, 23.5, 'flame', 'FAST');
+      if (B && B.flame) { const fh = 23.5, fw = fh * flameRatio(); doc.addImage(B.flame, 'PNG', M + (20 - fw) / 2, 4.5, fw, fh, 'flame', 'FAST'); }
       doc.setTextColor(...C.white); doc.setFont('helvetica', 'bold'); doc.setFontSize(19);
       doc.text('TODO GAS SYR', M + 25, 13);
       const tw = doc.getTextWidth('TODO GAS SYR ');
@@ -109,7 +112,7 @@
     function headerSmall() {
       hGrad(doc, 0, 0, W, 14, [[0, C.navy0], [0.6, C.navy], [1, C.navy2]]);
       hGrad(doc, 0, 14, W, 1, [[0, C.cyan], [0.55, C.gold], [1, C.orange]]);
-      if (B && B.flame) doc.addImage(B.flame, 'PNG', M, 2.2, 8.5, 10, 'flame', 'FAST');
+      if (B && B.flame) { const fh = 10, fw = fh * flameRatio(); doc.addImage(B.flame, 'PNG', M + (8.5 - fw) / 2, 2.2, fw, fh, 'flame', 'FAST'); }
       doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...C.white); doc.text('TODO GAS SYR S.A.S.', M + 11, 8.8);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...C.gold); doc.text(T(regimen), M + 55, 8.8);
       doc.setTextColor(200, 226, 238); oneLine(T(ref === (d.client.name || '').trim() ? ref : `${d.client.name ? d.client.name + ' · ' : ''}Informe ${ref}`), W - M, 8.8, W / 2 - 30, 7.5, { align: 'right' });
