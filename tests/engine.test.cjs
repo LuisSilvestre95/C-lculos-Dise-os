@@ -160,6 +160,19 @@ test('Müller y Renouard cuadrática coinciden dentro de un 20 % (validación cr
   }
 });
 
+test('Tramos de accesorio (0.05 m): salen de la tee anterior y el balance da 11 = 11', () => {
+  const S = (ini, fin, q, l) => ({ ini, fin, q, l, mat: 'PEALPE', dn: '1620' });
+  const r = E.calcNetwork([S('A', 'B', 11, 0.75), S('B', 'C', 1.48, 0.8), S('C', 'D', 9.52, 0.05), S('D', 'E', 2.95, 2),
+    S('E', 'F', 6.57, 0.05), S('F', 'G', 3.97, 3), S('G', 'H', 2.6, 4)], { mode: 'baja', G: 0.67, patm: 830.1, factorLE: 1.2, pi: 25, crit: { pmin: 18, vmax: 20, maxLossPct: 10 } });
+  assert.equal(r.rows[2].from, 'B'); assert.equal(r.rows[4].from, 'D');
+  close(r.rows[2].pi, r.rows[0].pf); // C-D toma la presión de la tee B, no la del ramal B-C
+  assert.equal(r.warnings.length, 0);
+  close(r.summary.balance.qIn, 11); close(r.summary.balance.qCons, 11); assert.ok(Math.abs(r.summary.balance.diff) < 1e-9); assert.ok(r.summary.balance.ok);
+  // Un tramo largo nunca se mueve, aunque su caudal no cuadre: se avisa
+  const bad = E.calcNetwork([S('A', 'B', 2, 5), S('B', 'C', 5, 3)], { mode: 'baja', G: 0.67, patm: 830, factorLE: 1.2, pi: 23, crit: { pmin: 18, vmax: 20, maxLossPct: 10 } });
+  assert.equal(bad.rows[1].from, 'B'); assert.equal(bad.warnings.length, 1); assert.equal(bad.summary.balance.ok, false);
+});
+
 test('Caudal desde potencia', () => {
   close(E.flowFromPower(10.35, 'kW', 10.35), 1);
   close(E.flowFromPower(100000, 'BTU/h', 10.35), 29.307107 / 10.35);

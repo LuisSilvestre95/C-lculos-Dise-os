@@ -45,7 +45,7 @@
     ['baja', 'media'].forEach((m) => {
       const src = s[m] || {};
       out[m] = { ...d[m] };
-      ['pi', 'pmin', 'vmax', 'maxLossPct'].forEach((k) => { if (src[k] != null) out[m][k] = str(src[k], 20); });
+      ['pi', 'pmin', 'vmax', 'maxLossPct', 'pimax'].forEach((k) => { if (src[k] != null) out[m][k] = str(src[k], 20); });
       out[m].segs = (Array.isArray(src.segs) ? src.segs.slice(0, MAX_SEGS) : []).filter((g) => g && typeof g === 'object').map((g) => ({
         id: newId(), ini: str(g.ini || 'A', 4).toUpperCase().replace(/[^A-Z0-9]/g, ''), fin: str(g.fin || 'B', 4).toUpperCase().replace(/[^A-Z0-9]/g, ''),
         q: str(g.q, 20), l: str(g.l, 20), mat: E.PIPES[g.mat] ? g.mat : 'PEALPE', dn: str(g.dn, 12), di: str(g.di, 20)
@@ -117,7 +117,7 @@
     $('#G').value = state.G;
     $('#factorLE').value = state.factorLE;
     const m = M();
-    $('#pi').value = m.pi; $('#pmin').value = m.pmin; $('#vmax').value = m.vmax; $('#maxLoss').value = m.maxLossPct;
+    $('#pi').value = m.pi; $('#pmin').value = m.pmin; $('#vmax').value = m.vmax; $('#maxLoss').value = m.maxLossPct; $('#pimax').value = m.pimax ?? 25;
     // Solo se muestran los campos que hacen falta: altitud y Patm si el municipio es personalizado; S si el gas es "otro".
     document.body.classList.toggle('city-custom', state.city === 'custom');
     document.body.classList.toggle('gas-other', state.gas === 'OTRO');
@@ -125,7 +125,7 @@
     $('#cityHint').textContent = c ? `${c.alt} m s. n. m. · presión atmosférica ${fmt(E.num(state.patm), 1)} mbar (automática)` : 'Escriba la altitud o la presión atmosférica del sitio.';
     $('#gasHint').textContent = state.gas === 'OTRO' ? 'Escriba la densidad relativa del gas.' : `Densidad relativa S = ${fmt(E.num(state.G), 2)} (automática)`;
     $('#piHint').textContent = state.mode === 'baja'
-      ? (isGLP(state.gas) ? 'Típico GLP: 28–37 mbar' : 'Típico gas natural: 21–23 mbar')
+      ? `Máx. del regulador: ${String(m.pimax ?? 25)} mbar · típico ${isGLP(state.gas) ? 'GLP 25' : 'gas natural 21–23'} mbar`
       : 'Salida del regulador de primera etapa (100–5000 mbar)';
     renderAutoLine();
     $$('[data-client]').forEach((el) => { el.value = state.client[el.dataset.client] || ''; });
@@ -162,13 +162,15 @@
       if (state.gas !== 'OTRO') { state.G = E.GASES[state.gas].G; $('#G').value = state.G; }
       // Presión típica según el gas (solo si sigue el valor típico del otro gas).
       const bp = E.num(state.baja.pi);
-      if (isGLP(state.gas) && bp <= 23) state.baja.pi = 28;
-      if (!isGLP(state.gas) && state.gas !== 'OTRO' && bp === 28) state.baja.pi = 23;
+      // GLP: la salida del regulador de baja (máx. 25 mbar); gas natural: 23 mbar.
+      const top = E.num(state.baja.pimax, 25);
+      if (isGLP(state.gas) && bp <= 23) state.baja.pi = Math.min(25, top);
+      if (!isGLP(state.gas) && state.gas !== 'OTRO' && bp === Math.min(25, top) && bp !== 23) state.baja.pi = 23;
       paintParams(); changed();
     });
     $('#G').addEventListener('input', (e) => { state.G = e.target.value; const g = E.GASES[state.gas]; if (g && E.num(e.target.value) !== g.G) { state.gas = 'OTRO'; $('#gas').value = 'OTRO'; } changed(); });
     $('#factorLE').addEventListener('input', (e) => { state.factorLE = e.target.value; renderAutoLine(); changed(); });
-    [['pi', 'pi'], ['pmin', 'pmin'], ['vmax', 'vmax'], ['maxLoss', 'maxLossPct']].forEach(([id, key]) => $('#' + id).addEventListener('input', (e) => { M()[key] = e.target.value; changed(); }));
+    [['pi', 'pi'], ['pmin', 'pmin'], ['vmax', 'vmax'], ['maxLoss', 'maxLossPct'], ['pimax', 'pimax']].forEach(([id, key]) => $('#' + id).addEventListener('input', (e) => { M()[key] = e.target.value; changed(); }));
     // Régimen automático: más de 100 mbar es media presión; menos de 100 mbar es baja presión.
     $('#pi').addEventListener('change', (e) => {
       const v = E.num(e.target.value, NaN);
@@ -353,6 +355,7 @@
     renderRowChips(res);
     renderNotices(res);
     renderResults(res);
+    renderBalance(res);
     renderCharts(last);
   }
 
@@ -405,9 +408,25 @@
         : statusChip(r);
     });
   }
+  /** Avisos de diseño que no dependen de la red: por ejemplo, la salida máxima del regulador. */
+  function appWarnings() {
+    const out = [];
+    if (state.mode === 'baja') {
+      const pi = E.num(M().pi), top = E.num(M().pimax, 25);
+      if (top > 0 && pi > top) out.push(`La presión de suministro (${fmt(pi, 1)} mbar) supera la salida máxima del regulador (${fmt(top, 0)} mbar). Use la presión real del regulador instalado.`);
+    }
+    return out;
+  }
+  function renderBalance(res) {
+    const el = $('#balanceLine'), b = res.summary.balance;
+    if (!b || !res.summary.calculated) { el.hidden = true; return; }
+    el.hidden = false; el.className = 'balance-line ' + (b.ok ? 'ok' : 'bad');
+    const items = b.consumos.map((c) => `${esc(c.node)} ${fmt(c.q, 2)}`).join(' · ');
+    el.innerHTML = `${icon(b.ok ? 'check' : 'alert')}<span>Balance de caudales: entra <b>${fmt(b.qIn, 2)} m³/h</b> = consumos <b>${fmt(b.qCons, 2)} m³/h</b> · diferencia <b>${fmt(Math.abs(b.diff) < 0.005 ? 0 : b.diff, 2)}</b></span><span class="bl-items">Consumo por nodo: ${items || '—'}</span>`;
+  }
   function renderNotices(res) {
     const box = $('#netNotice');
-    const items = [...res.errors.map((t) => ({ t, k: 'bad' })), ...res.warnings.map((t) => ({ t, k: 'warn' }))];
+    const items = [...res.errors.map((t) => ({ t, k: 'bad' })), ...res.warnings.map((t) => ({ t, k: 'warn' })), ...appWarnings().map((t) => ({ t, k: 'warn' }))];
     if (!items.length) { box.hidden = true; return; }
     const k = items.some((x) => x.k === 'bad') ? 'bad' : 'warn';
     box.className = 'notice ' + k; box.hidden = false;
@@ -427,7 +446,7 @@
       if (!r.valid) return { r, cells: null };
       const vT = tone(usage(r.v, c.vmax)), lT = tone(usage(r.lossPct, c.maxLossPct));
       const pT = r.pf < c.pmin || r.pf <= 0 ? 'bad' : 'ok';
-      const common = [[`${r.ini}-${r.fin}`, ''], [fmt(r.q, 2), ''], [fmt(r.l, 2), ''], [fmt(r.le, 2), ''], [matShort(r.mat), ''], [dnLabel(r), ''], [fmt(r.d, 1), '']];
+      const common = [[`${r.ini}-${r.fin}${r.viaTee ? ` (desde ${r.from})` : ''}`, ''], [fmt(r.q, 2), ''], [fmt(r.l, 2), ''], [fmt(r.le, 2), ''], [matShort(r.mat), ''], [dnLabel(r), ''], [fmt(r.d, 1), '']];
       const mid = media
         ? [[fmt(r.pi, 2), ''], [fmt(r.p1Abs, 1), ''], [fmt(r.p2Abs, 1), ''], [fmt(r.pf, 2), 'c-' + pT], [fmt(r.psi, 3), ''], [fmt(r.lossPct, 2), 'c-' + lT], [fmt(r.v, 2), 'c-' + vT]]
         : [[fmt(r.pi, 3), ''], [fmt(r.dp, 3), ''], [fmt(r.pf, 3), 'c-' + pT], [fmt(r.lossPct, 2), 'c-' + lT], [fmt(r.v, 2), 'c-' + vT]];
@@ -552,7 +571,9 @@
   const today = () => new Date();
   const dateStr = (d = today()) => d.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
   const slug = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '_').slice(0, 40);
-  const fileBase = () => `Memoria_${state.mode === 'baja' ? 'BajaPresion' : 'MediaPresion'}_${slug(state.client.name) || 'Proyecto'}_${new Date().toISOString().slice(0, 10)}`;
+  // "Diseño Baja - NOMBRE DEL CLIENTE" (se quitan solo los caracteres no válidos en nombres de archivo)
+  // "Diseno Baja - NOMBRE DEL CLIENTE": sin tildes ni ñ en el nombre del archivo (algunos navegadores lo descartan si los lleva)
+  const fileBase = () => { const n = String(state.client.name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w .,()-]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80); return `Diseno ${state.mode === 'baja' ? 'Baja' : 'Media'} - ${n || 'Proyecto ' + new Date().toISOString().slice(0, 10)}`; };
 
   function download(blob, name) {
     const url = URL.createObjectURL(blob);

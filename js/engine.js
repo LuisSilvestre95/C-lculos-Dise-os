@@ -147,7 +147,7 @@
   };
 
   const DEFAULT_CRITERIA = {
-    baja: { pi: 23, pmin: 18, vmax: 20, maxLossPct: 10, kv: 354, method: 'renouard' },
+    baja: { pi: 23, pmin: 18, vmax: 20, maxLossPct: 10, pimax: 25, kv: 354, method: 'renouard' },
     media: { pi: 140, pmin: 0, vmax: 20, maxLossPct: 10, kv: 354, method: 'muller' }
   };
 
@@ -266,6 +266,28 @@
     return { order, errors: [...new Set(errors)], parentOf };
   }
 
+  /* ============================== TRAMOS DE ACCESORIO ============================== */
+  /** Longitud máxima de un tramo "entre accesorios" (por ejemplo, de tee a tee). */
+  const LONG_ACCESORIO = 0.10;
+  /**
+   * Un tramo corto (≤ 0.10 m) que lleva MÁS caudal que el tramo que llega a su nodo de inicio no puede
+   * alimentarse de ese tramo: es la continuación de la línea principal desde la tee anterior.
+   * Devuelve, para cada tramo, el nodo desde el que realmente toma el gas.
+   */
+  function effectiveStarts(segs) {
+    const byFin = new Map(); segs.forEach((s, i) => { if (s.fin && !byFin.has(s.fin)) byFin.set(s.fin, i); });
+    return segs.map((s) => {
+      let start = s.ini;
+      if (!(s.l > 0 && s.l <= LONG_ACCESORIO)) return start;
+      for (let k = 0; k < segs.length; k++) {
+        const j = byFin.get(start); if (j == null) break;
+        const inc = segs[j]; if (inc.q + 1e-9 >= s.q) break; // el tramo que llega sí alcanza: no se mueve
+        start = inc.ini;
+      }
+      return start;
+    });
+  }
+
   /* ============================== CÁLCULO DE RED ============================== */
   /**
    * @param {Array} segments [{ini, fin, q, l, mat, dn, di}]
@@ -281,6 +303,9 @@
       fin: String(s.fin || '').trim().toUpperCase(),
       q: num(s.q) * demand, qBase: num(s.q), l: num(s.l), mat: s.mat, dn: s.dn, d: segmentDI(s)
     }));
+    // Nodo desde el que cada tramo toma el gas (los tramos de accesorio pueden salir de la tee anterior).
+    const starts = effectiveStarts(segs);
+    segs.forEach((s, i) => { s.iniOrig = s.ini; s.ini = starts[i]; });
     const topo = topology(segs);
     const rows = new Array(segs.length).fill(null);
     const warnings = [];
@@ -290,7 +315,7 @@
       const parent = topo.parentOf[i];
       const pi = parent < 0 ? num(p.pi) : (rows[parent] && rows[parent].valid ? rows[parent].pf : NaN);
       const le = s.l * num(p.factorLE, 1.2);
-      const base = { index: i, ini: s.ini, fin: s.fin, q: s.q, qBase: s.qBase, l: s.l, le, d: s.d, mat: s.mat, dn: s.dn, pi, parent };
+      const base = { index: i, ini: s.iniOrig, fin: s.fin, from: s.ini, viaTee: s.ini !== s.iniOrig, q: s.q, qBase: s.qBase, l: s.l, le, d: s.d, mat: s.mat, dn: s.dn, pi, parent };
       if (!(s.q > 0) || !(s.l > 0) || !(s.d > 0) || !Number.isFinite(pi)) {
         rows[i] = { ...base, valid: false, reason: !(s.q > 0) ? 'Caudal' : !(s.l > 0) ? 'Longitud' : !(s.d > 0) ? 'Diámetro' : 'Presión de entrada' };
         return;
@@ -299,16 +324,23 @@
       const ev = evaluate(r, crit, pi);
       rows[i] = { ...base, ...r, valid: true, ...ev, psi: r.pf * K.MBAR_A_PSI, lossAbsPct: r.p1Abs > 0 ? (r.p1Abs - r.p2Abs) / r.p1Abs * 100 : 0 };
     });
-    segs.forEach((s, i) => { if (!rows[i]) rows[i] = { index: i, ini: s.ini, fin: s.fin, q: s.q, qBase: s.qBase, l: s.l, le: 0, d: s.d, mat: s.mat, dn: s.dn, pi: NaN, valid: false, reason: 'Topología' }; });
+    segs.forEach((s, i) => { if (!rows[i]) rows[i] = { index: i, ini: s.iniOrig, fin: s.fin, from: s.ini, q: s.q, qBase: s.qBase, l: s.l, le: 0, d: s.d, mat: s.mat, dn: s.dn, pi: NaN, valid: false, reason: 'Topología' }; });
 
     // Balance de caudales: el caudal que sale de un nodo no puede superar el que entra.
     const outflow = new Map();
     segs.forEach((s) => outflow.set(s.ini, (outflow.get(s.ini) || 0) + s.qBase));
+    const consumos = [];
     segs.forEach((s) => {
       const out = outflow.get(s.fin) || 0;
       // Tolerancia de redondeo: 0.02 m³/h o 1 % del caudal del tramo (lo que sea mayor).
-      if (out - s.qBase > Math.max(0.02, s.qBase * 0.01)) warnings.push(`Nodo ${s.fin}: sale ${out.toFixed(2)} m³/h pero entran solo ${s.qBase.toFixed(2)} m³/h por el tramo ${s.ini}-${s.fin}.`);
+      if (out - s.qBase > Math.max(0.02, s.qBase * 0.01)) warnings.push(`Nodo ${s.fin}: sale ${out.toFixed(2)} m³/h pero entran solo ${s.qBase.toFixed(2)} m³/h por el tramo ${s.iniOrig}-${s.fin}.`);
+      const c = s.qBase - out; // consumo en el nodo final del tramo (aparatos conectados ahí)
+      if (c > 1e-6) consumos.push({ node: s.fin, q: c });
     });
+    // Balance global: caudal que entra a la red = suma de los consumos (la resta debe dar 0).
+    const qIn = segs.filter((s, i) => topo.parentOf[i] === -1 && topo.order.includes(i)).reduce((a, s) => a + s.qBase, 0);
+    const qCons = consumos.reduce((a, c) => a + c.q, 0);
+    const balance = { qIn, qCons, diff: qIn - qCons, consumos, ok: Math.abs(qIn - qCons) <= Math.max(0.02, qIn * 0.005) && !warnings.length };
 
     const valid = rows.filter((r) => r.valid);
     // Longitud acumulada desde la fuente y recorrido hasta el punto de menor presión.
@@ -331,6 +363,7 @@
       vMax: valid.length ? Math.max(...valid.map((r) => r.v)) : NaN,
       qSource: segs.filter((s, i) => topo.parentOf[i] === -1 && topo.order.includes(i)).reduce((a, s) => a + s.q, 0),
       complete,
+      balance,
       ok: complete && valid.every((r) => r.ok)
     };
     return { mode, rows, path, summary, errors: topo.errors, warnings, order: topo.order };
@@ -349,7 +382,9 @@
     if (res0.errors.length) return { segments: segs, ok: false, changed: 0 };
     const fle = num(p.factorLE, 1.2);
     // Longitud equivalente máxima de la fuente a cualquier punto final que pasa por cada tramo.
-    const topo = topology(segs.map((s) => ({ ini: String(s.ini).toUpperCase(), fin: String(s.fin).toUpperCase() })));
+    const norm = segs.map((s) => ({ ini: String(s.ini).toUpperCase(), fin: String(s.fin).toUpperCase(), q: num(s.q), l: num(s.l) }));
+    const eff = effectiveStarts(norm);
+    const topo = topology(norm.map((s, i) => ({ ini: eff[i], fin: s.fin })));
     const childrenOf = segs.map(() => []);
     topo.parentOf.forEach((par, i) => { if (par >= 0) childrenOf[par].push(i); });
     const down = new Array(segs.length).fill(0);
@@ -399,7 +434,7 @@
   const api = {
     K, PIPES, CITIES, GASES, DEFAULT_CRITERIA,
     num, patmFromAltitude, nextNode, nodeIndex, getPipe, segmentDI,
-    lowTramo, mediumTramo, mullerTramo, topology, calcNetwork, autoSize, flowFromPower
+    lowTramo, mediumTramo, mullerTramo, topology, effectiveStarts, calcNetwork, autoSize, flowFromPower
   };
   root.GasEngine = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

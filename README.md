@@ -35,6 +35,10 @@ Hay dos PDF de ejemplo en `docs/` (baja y media presión).
   - la densidad la pone el tipo de gas y la presión típica de baja se ajusta (GN 23 mbar, GLP 28 mbar);
   - la presión atmosférica sale del municipio;
   - altitud, presión atmosférica y densidad solo aparecen cuando hace falta escribirlas (municipio "Personalizado" u "Otro gas").
+- **Tramos de accesorio:** un tramo corto (≤ 0.10 m, de tee a tee) que lleva más caudal que el tramo que llega a su nodo se toma automáticamente desde la tee anterior. Así cuadra el caudal y la presión es la real.
+- **Balance de caudales:** en pantalla y en el PDF: caudal de entrada = suma de consumos (la diferencia debe ser 0), con el consumo de cada nodo.
+- **Regulador de baja:** avisa si la presión de suministro supera la salida máxima del regulador (25 mbar por defecto, editable).
+- **Exportación:** los archivos se llaman `Diseno Baja - NOMBRE DEL CLIENTE.pdf` o `Diseno Media - …`, y el PDF lleva el título "DISEÑO".
 - **Criterios y ajustes** (plegados): presión mínima, velocidad máxima, pérdida máxima por tramo y factor de longitud equivalente (`Le = L × 1.2`).
 - El motor también reproduce las hojas de Excel anteriores (Patm 723.6, k 345). Las pruebas automáticas lo verifican hasta 12 decimales.
 

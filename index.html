@@ -144,6 +144,7 @@
           <div class="fields">
             <div class="field"><label for="pmin">Presión mínima final (mbar)</label><input id="pmin" type="text" inputmode="decimal"></div>
             <div class="field"><label for="vmax">Velocidad máxima (m/s)</label><input id="vmax" type="text" inputmode="decimal"></div>
+            <div class="field only-baja"><label for="pimax">Salida máx. del regulador (mbar)</label><input id="pimax" type="text" inputmode="decimal"><small>Reguladores de baja: máx. 25 mbar</small></div>
             <div class="field"><label for="maxLoss">Pérdida máx. por tramo (%)</label><input id="maxLoss" type="text" inputmode="decimal"></div>
             <div class="field"><label for="factorLE">Factor longitud equivalente</label><input id="factorLE" type="text" inputmode="decimal" autocomplete="off"><small>Le = L × factor (accesorios)</small></div>
           </div>
@@ -202,6 +203,7 @@
           <tbody id="resBody"></tbody>
         </table>
       </div>
+      <p class="balance-line" id="balanceLine" hidden></p>
       <p class="legend-line"><span class="st ok"><svg><use href="#i-check"/></svg>Cumple</span><span class="st warn"><svg><use href="#i-alert"/></svg>≥ 80 % del límite</span><span class="st bad"><svg><use href="#i-x"/></svg>No cumple</span></p>
     </div>
   </section>
@@ -257,7 +259,7 @@
     <div>
       <p><b>TODO GAS SYR S.A.S.</b> · NIT 901.126.243-3 · Colombia</p>
       <p>Diseño y cálculos: Luis Silvestre · Ingeniero MP 041122-0809747 BYC — COPNIA</p>
-      <p>Tel. 322 361 8360 · 320 948 5534 · © 2026 · <span class="app-version">Versión 3.2</span></p>
+      <p>Tel. 322 361 8360 · 320 948 5534 · © 2026 · <span class="app-version">Versión 3.3</span></p>
     </div>
   </div>
 </footer>

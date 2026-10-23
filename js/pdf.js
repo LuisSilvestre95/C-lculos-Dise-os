@@ -1,5 +1,5 @@
 /*!
- * TODO GAS SYR — Memoria de cálculo en PDF (jsPDF + AutoTable).
+ * TODO GAS SYR — Diseño (memoria de cálculo) en PDF (jsPDF + AutoTable).
  * Texto y tablas vectoriales (nítidos a cualquier zoom), gráficas a ~300 ppp, logo y firma.
  * Las librerías se cargan solo al exportar para que la app abra al instante.
  */
@@ -68,7 +68,7 @@
     const ref = (d.client.ref || '').trim() || (d.client.name || '').trim() || ('TGS-' + d.dateISO.slice(0, 10).replace(/-/g, ''));
 
     doc.setProperties({
-      title: T(`Memoria de cálculo - ${d.client.name || 'Proyecto'} - ${media ? 'Media' : 'Baja'} presión`),
+      title: T(`Diseño ${media ? 'Media' : 'Baja'} - ${d.client.name || 'Proyecto'}`),
       subject: 'Cálculo de red de gas - TODO GAS SYR S.A.S.', author: 'TODO GAS SYR S.A.S.', creator: 'TODO GAS SYR · Sistema de cálculo', keywords: 'gas natural, GLP, Renouard, NTC 2505'
     });
     doc.setLineHeightFactor(1.25);
@@ -87,7 +87,7 @@
       doc.text('TODO GAS SYR', M + 25, 13);
       const tw = doc.getTextWidth('TODO GAS SYR ');
       doc.setTextColor(...C.gold); doc.text('S.A.S.', M + 25 + tw, 13);
-      doc.setFontSize(9.5); doc.setTextColor(...C.gold); doc.text(T('MEMORIA DE CÁLCULO · RED DE GAS · ' + regimen), M + 25, 19.5);
+      doc.setFontSize(9.5); doc.setTextColor(...C.gold); doc.text(T('DISEÑO · RED DE GAS · ' + regimen), M + 25, 19.5);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(200, 226, 238);
       doc.text(T('NIT 901.126.243-3 · Colombia · Tel. 322 361 8360 · 320 948 5534'), M + 25, 25);
       // Caja del informe: el texto se ajusta solo (1 o 2 líneas) para no salirse del recuadro.
@@ -207,6 +207,18 @@
       ? `${muller ? 'Müller: P1² - P2² = (Q · S^0.425 · Le^0.576 / (4.61e-5 · D^2.725))^1.74' : 'Renouard cuadrática: P1² - P2² = 48 600 · S · Le · Q^1.82 · D^-4.82'}, con P abs = P + ${fmt(p.patm, 1)} mbar. ${vtxt}. Le = L × ${fmt(p.factorLE, 2)}. Criterios: V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %${crit.pmin > 0 ? ` · P2 >= ${crit.pmin} mbar` : ''}.`
       : `Renouard lineal: dP = 23 200 · S · Le · Q^1.82 · D^-4.82. ${vtxt}, P abs = Pf + ${fmt(p.patm, 1)} mbar. Le = L × ${fmt(p.factorLE, 2)}. Criterios: Pf >= ${crit.pmin} mbar · V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %.`;
     doc.text(T(note), M, y + 1, { maxWidth: W - 2 * M });
+    // Balance de caudales: lo que entra a la red debe ser igual a la suma de los consumos (la resta da 0).
+    const bal = s.balance;
+    if (bal && s.calculated) {
+      const yb = y + 8.5, ok = bal.ok;
+      doc.setFillColor(...(ok ? C.okBg : C.warnBg)); doc.roundedRect(M, yb - 4.2, W - 2 * M, 7.2, 1.6, 1.6, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...(ok ? C.ok : C.warn));
+      const head = `Balance de caudales: entra ${fmt(bal.qIn, 2)} m³/h = consumos ${fmt(bal.qCons, 2)} m³/h · diferencia ${fmt(Math.abs(bal.diff) < 0.005 ? 0 : bal.diff, 2)}`;
+      doc.text(T(head), M + 3, yb);
+      const hw = doc.getTextWidth(T(head)); // medido en negrita, antes de cambiar la letra
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(...C.ink2);
+      oneLine(T('Consumo por nodo: ' + bal.consumos.map((c) => `${c.node} ${fmt(c.q, 2)}`).join(' · ')), M + 3 + hw + 6, yb, W - 2 * M - hw - 14, 7.6);
+    }
 
     /* ===== PÁGINA 2: GRÁFICAS + FIRMA ===== */
     doc.addPage(); headerSmall();
@@ -251,7 +263,7 @@
       doc.setPage(i);
       hGrad(doc, M, H - 11, W - 2 * M, 0.5, [[0, C.cyan], [0.55, C.gold], [1, C.orange]], 40);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(6.8); doc.setTextColor(...C.muted);
-      doc.text(T(`TODO GAS SYR S.A.S. · NIT 901.126.243-3 · Memoria de cálculo generada el ${d.date}`), M, H - 6.5);
+      doc.text(T(`TODO GAS SYR S.A.S. · NIT 901.126.243-3 · Diseño ${media ? 'media' : 'baja'} presión generado el ${d.date}`), M, H - 6.5);
       doc.setFontSize(6.2); doc.text(T('Documento técnico: verifique los datos de entrada antes de construir.'), M, H - 3.4);
       doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.ink2); doc.text(`Página ${i} de ${n}`, W - M, H - 6.5, { align: 'right' });
     }
