@@ -402,6 +402,7 @@
       const r = res.rows[+row.dataset.i];
       if (!r) return;
       row.classList.toggle('ok', !!(r.valid && r.ok)); row.classList.toggle('bad', !!(r.valid && !r.ok));
+      row.classList.toggle('acc', !!r.acc);
       const chip = row.querySelector('.res-chip');
       chip.innerHTML = r.valid
         ? `${statusChip(r)}<span class="rc-vals"><span>Pf <b>${fmt(r.pf, 2)}</b></span><span>V <b>${fmt(r.v, 2)}</b></span></span>${r.ok ? '' : `<span class="rc-why">${esc(why(r))}</span>`}`
@@ -446,7 +447,9 @@
       if (!r.valid) return { r, cells: null };
       const vT = tone(usage(r.v, c.vmax)), lT = tone(usage(r.lossPct, c.maxLossPct));
       const pT = r.pf < c.pmin || r.pf <= 0 ? 'bad' : 'ok';
-      const common = [[`${r.ini}-${r.fin}${r.viaTee ? ` (desde ${r.from})` : ''}`, ''], [fmt(r.q, 2), ''], [fmt(r.l, 2), ''], [fmt(r.le, 2), ''], [matShort(r.mat), ''], [dnLabel(r), ''], [fmt(r.d, 1), '']];
+      // Tramos entre accesorios (≤ 0.10 m): Q y L en otro color, porque no se suman en el balance.
+      const acc = r.acc ? 'c-acc' : '';
+      const common = [[`${r.ini}-${r.fin}`, ''], [fmt(r.q, 2), acc], [fmt(r.l, 2), acc], [fmt(r.le, 2), ''], [matShort(r.mat), ''], [dnLabel(r), ''], [fmt(r.d, 1), '']];
       const mid = media
         ? [[fmt(r.pi, 2), ''], [fmt(r.p1Abs, 1), ''], [fmt(r.p2Abs, 1), ''], [fmt(r.pf, 2), 'c-' + pT], [fmt(r.psi, 3), ''], [fmt(r.lossPct, 2), 'c-' + lT], [fmt(r.v, 2), 'c-' + vT]]
         : [[fmt(r.pi, 3), ''], [fmt(r.dp, 3), ''], [fmt(r.pf, 3), 'c-' + pT], [fmt(r.lossPct, 2), 'c-' + lT], [fmt(r.v, 2), 'c-' + vT]];
@@ -475,29 +478,15 @@
       const empty = { empty: true, emptyText: 'Agregue tramos con caudal, longitud y diámetro' };
       return { profile: empty, vel: empty };
     }
-    // Todos los nodos de la red: la fuente y el final de cada tramo calculado.
-    const onPath = new Set(res.path);
-    const points = [], idxOf = new Map(), links = [];
-    valid.forEach((r) => {
-      if (r.parent < 0 && !idxOf.has('src:' + r.ini)) {
-        idxOf.set('src:' + r.ini, points.length);
-        points.push({ x: 0, y: r.pi, label: r.ini, main: true, tip: `<b>Nodo ${esc(r.ini)} (inicio)</b>${fmt(r.pi, 2)} mbar` });
-      }
-    });
-    valid.forEach((r) => {
-      idxOf.set(r.index, points.length);
-      points.push({ x: r.dist, y: r.pf, label: r.fin, bad: !r.ok, main: onPath.has(r.index), tip: `<b>Nodo ${esc(r.fin)}</b>P = ${fmt(r.pf, 2)} mbar<br>Distancia ${fmt(r.dist, 1)} m · tramo ${esc(r.ini)}-${esc(r.fin)}` });
-    });
-    valid.forEach((r) => {
-      const from = r.parent >= 0 ? idxOf.get(r.parent) : idxOf.get('src:' + r.ini);
-      if (from != null) links.push([from, idxOf.get(r.index), onPath.has(r.index)]);
-    });
-    // El recorrido principal va en orden desde la fuente.
-    links.sort((a, b) => (b[2] - a[2]) || 0);
-    const mainLinks = res.path.map((i) => links.find((l) => l[1] === idxOf.get(i))).filter(Boolean);
-    const otherLinks = links.filter((l) => !l[2]);
+    // Presión en cada nodo: la fuente y el final de cada tramo, en el orden de la tabla.
+    const nodes = [];
+    valid.forEach((r) => { if (r.parent < 0 && !nodes.some((x) => x.label === r.from)) nodes.push({ label: r.from, value: r.pi, status: 'ok', tip: `<b>Nodo ${esc(r.from)} (inicio)</b>${fmt(r.pi, 2)} mbar` }); });
+    valid.forEach((r) => nodes.push({
+      label: r.fin, value: r.pf, status: r.pf < p.crit.pmin ? 'bad' : 'ok',
+      tip: `<b>Nodo ${esc(r.fin)}</b>${fmt(r.pf, 2)} mbar al final del tramo ${esc(r.ini)}-${esc(r.fin)}<br>Pérdida en el tramo ${fmt(r.dp, 3)} mbar`
+    }));
     const profile = {
-      kind: 'line', points, links: [...mainLinks, ...otherLinks], xLabel: 'Distancia equivalente (m)', yLabel: 'Presión (mbar)', color: null,
+      kind: 'dots', bars: nodes, xLabel: 'Nodo', yLabel: 'Presión (mbar)',
       refs: p.crit.pmin > 0 ? [{ y: p.crit.pmin, label: `Mínima ${p.crit.pmin} mbar` }] : []
     };
     const vel = {

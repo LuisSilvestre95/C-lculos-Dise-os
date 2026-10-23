@@ -194,6 +194,7 @@
         } else if (raw && raw.cls) {
           if (raw.cls === 'c-bad') { h.cell.styles.fillColor = C.badBg; h.cell.styles.textColor = C.bad; h.cell.styles.fontStyle = 'bold'; }
           else if (raw.cls === 'c-warn') { h.cell.styles.fillColor = C.warnBg; h.cell.styles.textColor = C.warn; h.cell.styles.fontStyle = 'bold'; }
+          else if (raw.cls === 'c-acc') { h.cell.styles.fillColor = hex('#dff1fb'); h.cell.styles.textColor = hex('#0b5d8f'); h.cell.styles.fontStyle = 'bold'; }
           else if (raw.cls === 'c-ok') { h.cell.styles.textColor = C.ok; h.cell.styles.fontStyle = 'bold'; }
           else if (raw.cls === 'muted') { h.cell.styles.textColor = C.muted; }
         }
@@ -207,6 +208,11 @@
       ? `${muller ? 'Müller: P1² - P2² = (Q · S^0.425 · Le^0.576 / (4.61e-5 · D^2.725))^1.74' : 'Renouard cuadrática: P1² - P2² = 48 600 · S · Le · Q^1.82 · D^-4.82'}, con P abs = P + ${fmt(p.patm, 1)} mbar. ${vtxt}. Le = L × ${fmt(p.factorLE, 2)}. Criterios: V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %${crit.pmin > 0 ? ` · P2 >= ${crit.pmin} mbar` : ''}.`
       : `Renouard lineal: dP = 23 200 · S · Le · Q^1.82 · D^-4.82. ${vtxt}, P abs = Pf + ${fmt(p.patm, 1)} mbar. Le = L × ${fmt(p.factorLE, 2)}. Criterios: Pf >= ${crit.pmin} mbar · V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %.`;
     doc.text(T(note), M, y + 1, { maxWidth: W - 2 * M });
+    if (d.res.rows.some((r) => r.acc)) {
+      y += 4.2; doc.setFillColor(...hex('#dff1fb')); doc.roundedRect(M, y - 1.9, 3, 3, 0.6, 0.6, 'F');
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(6.8); doc.setTextColor(...hex('#0b5d8f'));
+      doc.text(T('Q y L en azul: tramo entre accesorios (hasta 0.10 m, de tee a tee). No se suma en el balance: es la continuación de la línea principal.'), M + 4.5, y + 0.6);
+    }
     // Balance de caudales: lo que entra a la red debe ser igual a la suma de los consumos (la resta da 0).
     const bal = s.balance;
     if (bal && s.calculated) {
@@ -236,7 +242,7 @@
       const img = Charts.toPNG({ ...spec, fontScale: 1 }, pw * pxPerMm, ph * pxPerMm, 3.6);
       doc.addImage(img, 'PNG', x + 4, yy + 15, pw, ph, undefined, 'FAST');
     };
-    drawChart(d.specs.profile, M, y, cw, ch, 'Presión en cada nodo', 'Todos los nodos · gruesa: hasta la menor presión · delgada: ramales');
+    drawChart(d.specs.profile, M, y, cw, ch, 'Presión en cada nodo', 'Presión que llega a cada punto de la red · línea roja: mínima permitida');
     drawChart(d.specs.vel, M + cw + 6, y, cw, ch, 'Velocidad por tramo', 'Rojo: supera el límite · ámbar: >= 80 % del límite');
     y += ch + 8;
 

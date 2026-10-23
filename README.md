@@ -20,7 +20,7 @@ Aplicación web para calcular y documentar redes de **gas natural y GLP** en **b
 - **Exportación**: PDF con logo, resultados del cálculo, gráficas y firma; compartir el PDF; CSV para Excel; guardar y abrir proyectos; imprimir.
 - Modo claro y oscuro. Los datos se guardan automáticamente en el dispositivo.
 
-Hay dos PDF de ejemplo en `docs/` (baja y media presión).
+Hay dos PDF de ejemplo en `docs/` (baja y media presión). Gráficas: presión que llega a cada nodo (con la mínima permitida) y velocidad por tramo (con el límite).
 
 ## Fórmulas (se eligen solas)
 
@@ -35,7 +35,7 @@ Hay dos PDF de ejemplo en `docs/` (baja y media presión).
   - la densidad la pone el tipo de gas y la presión típica de baja se ajusta (GN 23 mbar, GLP 28 mbar);
   - la presión atmosférica sale del municipio;
   - altitud, presión atmosférica y densidad solo aparecen cuando hace falta escribirlas (municipio "Personalizado" u "Otro gas").
-- **Tramos de accesorio:** un tramo corto (≤ 0.10 m, de tee a tee) que lleva más caudal que el tramo que llega a su nodo se toma automáticamente desde la tee anterior. Así cuadra el caudal y la presión es la real.
+- **Tramos de accesorio:** un tramo corto (≤ 0.10 m, de tee a tee) que lleva más caudal que el tramo que llega a su nodo se toma automáticamente desde la tee anterior. Así cuadra el caudal y la presión es la real. En la tabla y en el PDF, la Q y la L de esos tramos salen en azul para identificarlos en la suma manual.
 - **Balance de caudales:** en pantalla y en el PDF: caudal de entrada = suma de consumos (la diferencia debe ser 0), con el consumo de cada nodo.
 - **Regulador de baja:** avisa si la presión de suministro supera la salida máxima del regulador (25 mbar por defecto, editable).
 - **Exportación:** los archivos se llaman `Diseno Baja - NOMBRE DEL CLIENTE.pdf` o `Diseno Media - …`, y el PDF lleva el título "DISEÑO".

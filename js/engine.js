@@ -315,7 +315,7 @@
       const parent = topo.parentOf[i];
       const pi = parent < 0 ? num(p.pi) : (rows[parent] && rows[parent].valid ? rows[parent].pf : NaN);
       const le = s.l * num(p.factorLE, 1.2);
-      const base = { index: i, ini: s.iniOrig, fin: s.fin, from: s.ini, viaTee: s.ini !== s.iniOrig, q: s.q, qBase: s.qBase, l: s.l, le, d: s.d, mat: s.mat, dn: s.dn, pi, parent };
+      const base = { index: i, ini: s.iniOrig, fin: s.fin, from: s.ini, viaTee: s.ini !== s.iniOrig, acc: s.l > 0 && s.l <= LONG_ACCESORIO, q: s.q, qBase: s.qBase, l: s.l, le, d: s.d, mat: s.mat, dn: s.dn, pi, parent };
       if (!(s.q > 0) || !(s.l > 0) || !(s.d > 0) || !Number.isFinite(pi)) {
         rows[i] = { ...base, valid: false, reason: !(s.q > 0) ? 'Caudal' : !(s.l > 0) ? 'Longitud' : !(s.d > 0) ? 'Diámetro' : 'Presión de entrada' };
         return;
@@ -434,7 +434,7 @@
   const api = {
     K, PIPES, CITIES, GASES, DEFAULT_CRITERIA,
     num, patmFromAltitude, nextNode, nodeIndex, getPipe, segmentDI,
-    lowTramo, mediumTramo, mullerTramo, topology, effectiveStarts, calcNetwork, autoSize, flowFromPower
+    LONG_ACCESORIO, lowTramo, mediumTramo, mullerTramo, topology, effectiveStarts, calcNetwork, autoSize, flowFromPower
   };
   root.GasEngine = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

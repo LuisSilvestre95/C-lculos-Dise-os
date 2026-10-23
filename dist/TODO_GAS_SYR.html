@@ -20,6 +20,7 @@
    Mobile-first · Android / iPhone / tablets / Windows / macOS · claro y oscuro
    ========================================================================== */
 :root {
+  --acc: #0b5d8f; --acc-bg: #dff1fb;
   --navy: #023047; --navy-2: #01537a; --cyan: #219ebc; --sky: #8ecae6; --gold: #ffb703; --orange: #fb8500;
   --bg: #eef4f8; --bg-2: #f8fbfd; --surface: #ffffff; --surface-2: #f4f8fb; --surface-3: #e8f0f5;
   --ink: #10283a; --ink-2: #3c5569; --muted: #6a8093; --line: #d8e3ea; --line-2: #c3d3de;
@@ -42,7 +43,7 @@ body[data-mode="media"] { --accent: #1590b4; --accent-2: var(--navy-2); --accent
     --bg: #0a141d; --bg-2: #0d1924; --surface: #122231; --surface-2: #172a3b; --surface-3: #1d3347;
     --ink: #e7f0f6; --ink-2: #b6c8d6; --muted: #8aa1b3; --line: #243b50; --line-2: #2f4a62;
     --ok: #4fd39b; --ok-bg: #0f3a2a; --warn: #ffc257; --warn-bg: #3b2c0c; --bad: #ff7b84; --bad-bg: #43161b;
-    --ser-1: #1f97c2; --ser-2: #d9700f; --chart-grid: #20364a; --chart-ink: #a5b9c8;
+    --acc: #8fd3f7; --acc-bg: #12324a; --ser-1: #1f97c2; --ser-2: #d9700f; --chart-grid: #20364a; --chart-ink: #a5b9c8;
     --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px -10px rgba(0,0,0,.6); --shadow-lg: 0 24px 60px -18px rgba(0,0,0,.8);
     color-scheme: dark;
   }
@@ -51,7 +52,7 @@ body[data-mode="media"] { --accent: #1590b4; --accent-2: var(--navy-2); --accent
   --bg: #0a141d; --bg-2: #0d1924; --surface: #122231; --surface-2: #172a3b; --surface-3: #1d3347;
   --ink: #e7f0f6; --ink-2: #b6c8d6; --muted: #8aa1b3; --line: #243b50; --line-2: #2f4a62;
   --ok: #4fd39b; --ok-bg: #0f3a2a; --warn: #ffc257; --warn-bg: #3b2c0c; --bad: #ff7b84; --bad-bg: #43161b;
-  --ser-1: #1f97c2; --ser-2: #d9700f; --chart-grid: #20364a; --chart-ink: #a5b9c8;
+  --acc: #8fd3f7; --acc-bg: #12324a; --ser-1: #1f97c2; --ser-2: #d9700f; --chart-grid: #20364a; --chart-ink: #a5b9c8;
   --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px -10px rgba(0,0,0,.6); --shadow-lg: 0 24px 60px -18px rgba(0,0,0,.8);
   color-scheme: dark;
 }
@@ -399,6 +400,11 @@ body[data-mode="media"] .only-baja { display: none; }
 .balance-line .bl-items { color: var(--ink-2); font-size: 12px; }
 .via-tee { display: block; font-size: 10.5px; font-weight: 600; color: var(--muted); }
 
+/* Tramos entre accesorios (≤ 0.10 m): Q y L resaltados para identificarlos en la suma manual */
+.st.acc { background: var(--acc-bg); color: var(--acc); }
+.res-table td.c-acc { background: var(--acc-bg) !important; color: var(--acc); font-weight: 800; }
+.seg-row.acc .c-q input, .seg-row.acc .c-l input { background: var(--acc-bg); color: var(--acc); border-color: color-mix(in srgb, var(--acc) 35%, var(--line-2)); font-weight: 800; }
+
 </style>
 <script>
   // Aplica el tema antes de pintar para evitar parpadeo.
@@ -587,7 +593,7 @@ body[data-mode="media"] .only-baja { display: none; }
         </table>
       </div>
       <p class="balance-line" id="balanceLine" hidden></p>
-      <p class="legend-line"><span class="st ok"><svg><use href="#i-check"/></svg>Cumple</span><span class="st warn"><svg><use href="#i-alert"/></svg>≥ 80 % del límite</span><span class="st bad"><svg><use href="#i-x"/></svg>No cumple</span></p>
+      <p class="legend-line"><span class="st ok"><svg><use href="#i-check"/></svg>Cumple</span><span class="st warn"><svg><use href="#i-alert"/></svg>≥ 80 % del límite</span><span class="st bad"><svg><use href="#i-x"/></svg>No cumple</span><span class="st acc">Q y L en azul: tramo entre accesorios (≤ 0.10 m), no se suma</span></p>
     </div>
   </section>
 
@@ -597,7 +603,7 @@ body[data-mode="media"] .only-baja { display: none; }
     <div class="card-body">
       <div class="charts">
         <figure class="chart-card">
-          <figcaption><b>Presión en cada nodo</b><span>Todos los nodos · gruesa: hasta la menor presión · delgada: ramales</span></figcaption>
+          <figcaption><b>Presión en cada nodo</b><span>Presión (mbar) que llega a cada punto de la red · la línea roja es la mínima permitida</span></figcaption>
           <div class="chart-box"><canvas id="chProfile" role="img" aria-label="Presión en cada nodo"></canvas></div>
         </figure>
         <figure class="chart-card">
@@ -642,7 +648,7 @@ body[data-mode="media"] .only-baja { display: none; }
     <div>
       <p><b>TODO GAS SYR S.A.S.</b> · NIT 901.126.243-3 · Colombia</p>
       <p>Diseño y cálculos: Luis Silvestre · Ingeniero MP 041122-0809747 BYC — COPNIA</p>
-      <p>Tel. 322 361 8360 · 320 948 5534 · © 2026 · <span class="app-version">Versión 3.3</span></p>
+      <p>Tel. 322 361 8360 · 320 948 5534 · © 2026 · <span class="app-version">Versión 3.4</span></p>
     </div>
   </div>
 </footer>
@@ -976,7 +982,7 @@ body[data-mode="media"] .only-baja { display: none; }
       const parent = topo.parentOf[i];
       const pi = parent < 0 ? num(p.pi) : (rows[parent] && rows[parent].valid ? rows[parent].pf : NaN);
       const le = s.l * num(p.factorLE, 1.2);
-      const base = { index: i, ini: s.iniOrig, fin: s.fin, from: s.ini, viaTee: s.ini !== s.iniOrig, q: s.q, qBase: s.qBase, l: s.l, le, d: s.d, mat: s.mat, dn: s.dn, pi, parent };
+      const base = { index: i, ini: s.iniOrig, fin: s.fin, from: s.ini, viaTee: s.ini !== s.iniOrig, acc: s.l > 0 && s.l <= LONG_ACCESORIO, q: s.q, qBase: s.qBase, l: s.l, le, d: s.d, mat: s.mat, dn: s.dn, pi, parent };
       if (!(s.q > 0) || !(s.l > 0) || !(s.d > 0) || !Number.isFinite(pi)) {
         rows[i] = { ...base, valid: false, reason: !(s.q > 0) ? 'Caudal' : !(s.l > 0) ? 'Longitud' : !(s.d > 0) ? 'Diámetro' : 'Presión de entrada' };
         return;
@@ -1095,7 +1101,7 @@ body[data-mode="media"] .only-baja { display: none; }
   const api = {
     K, PIPES, CITIES, GASES, DEFAULT_CRITERIA,
     num, patmFromAltitude, nextNode, nodeIndex, getPipe, segmentDI,
-    lowTramo, mediumTramo, mullerTramo, topology, effectiveStarts, calcNetwork, autoSize, flowFromPower
+    LONG_ACCESORIO, lowTramo, mediumTramo, mullerTramo, topology, effectiveStarts, calcNetwork, autoSize, flowFromPower
   };
   root.GasEngine = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
@@ -1159,7 +1165,7 @@ body[data-mode="media"] .only-baja { display: none; }
     const X0 = pad.l, X1 = w - pad.r, Y0 = pad.t, Y1 = h - pad.b;
 
     // Dominio Y
-    let ys = spec.kind === 'bars' ? spec.bars.map((b) => b.value) : spec.points.map((p) => p.y);
+    let ys = spec.kind === 'bars' || spec.kind === 'dots' ? spec.bars.map((b) => b.value) : spec.points.map((p) => p.y);
     (spec.refs || []).forEach((r) => ys.push(r.y));
     ys = ys.filter(Number.isFinite);
     let yMin = spec.yMin != null ? Math.min(spec.yMin, ...ys) : Math.min(...ys);
@@ -1240,6 +1246,32 @@ body[data-mode="media"] .only-baja { display: none; }
         ctx.fillText(m.label, x + (ctx.textAlign === 'left' ? 5 : -5) * fs, Y0 + 2 * fs);
       });
       layout.sx = sx;
+    } else if (spec.kind === 'dots') {
+      // Un punto por nodo (eje X por categorías) con su valor escrito encima: fácil de leer.
+      const n = spec.bars.length, slot = (X1 - X0) / n;
+      ctx.textAlign = 'center';
+      spec.bars.forEach((b, i) => {
+        const cx = X0 + slot * (i + 0.5), y = sy(b.value);
+        const col = b.status === 'bad' ? t.bad : b.status === 'warn' ? t.warn : (spec.color || t.s1);
+        // guía vertical suave desde el eje hasta el punto
+        ctx.strokeStyle = t.grid; ctx.lineWidth = 1; ctx.setLineDash([2 * fs, 3 * fs]);
+        ctx.beginPath(); ctx.moveTo(Math.round(cx) + 0.5, Y1); ctx.lineTo(Math.round(cx) + 0.5, y); ctx.stroke(); ctx.setLineDash([]);
+        ctx.globalAlpha = hover && hover.index !== i ? 0.55 : 1;
+        ctx.beginPath(); ctx.arc(cx, y, 4.2 * fs, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+        ctx.lineWidth = 1.6 * fs; ctx.strokeStyle = t.surface; ctx.stroke(); ctx.globalAlpha = 1;
+        if (n <= 18) {
+          ctx.fillStyle = t.ink; ctx.font = F(n > 12 ? 8.5 : 9.5, 700);
+          // Si los valores no caben uno al lado del otro, se alternan arriba y abajo del punto.
+          const tight = ctx.measureText('00.00').width + 6 * fs > slot;
+          const below = tight && i % 2 === 1;
+          ctx.textBaseline = below ? 'top' : 'bottom';
+          ctx.fillText(b.value.toFixed(2), cx, below ? y + 7 * fs : y - 7 * fs);
+        }
+        ctx.fillStyle = t.ink2; ctx.font = F(n > 14 ? 9 : 10.5, 700); ctx.textBaseline = 'top';
+        if (n <= 24 || i % 2 === 0) ctx.fillText(b.label, cx, Y1 + 7 * fs);
+        layout.items.push({ px: cx, py: y, w: slot, ...b });
+      });
+      if (spec.xLabel) { ctx.fillStyle = t.ink2; ctx.font = F(10, 600); ctx.textBaseline = 'top'; ctx.fillText(spec.xLabel, (X0 + X1) / 2, Y1 + 20 * fs); }
     } else {
       const n = spec.bars.length;
       const slot = (X1 - X0) / n;
@@ -1527,6 +1559,7 @@ body[data-mode="media"] .only-baja { display: none; }
         } else if (raw && raw.cls) {
           if (raw.cls === 'c-bad') { h.cell.styles.fillColor = C.badBg; h.cell.styles.textColor = C.bad; h.cell.styles.fontStyle = 'bold'; }
           else if (raw.cls === 'c-warn') { h.cell.styles.fillColor = C.warnBg; h.cell.styles.textColor = C.warn; h.cell.styles.fontStyle = 'bold'; }
+          else if (raw.cls === 'c-acc') { h.cell.styles.fillColor = hex('#dff1fb'); h.cell.styles.textColor = hex('#0b5d8f'); h.cell.styles.fontStyle = 'bold'; }
           else if (raw.cls === 'c-ok') { h.cell.styles.textColor = C.ok; h.cell.styles.fontStyle = 'bold'; }
           else if (raw.cls === 'muted') { h.cell.styles.textColor = C.muted; }
         }
@@ -1540,6 +1573,11 @@ body[data-mode="media"] .only-baja { display: none; }
       ? `${muller ? 'Müller: P1² - P2² = (Q · S^0.425 · Le^0.576 / (4.61e-5 · D^2.725))^1.74' : 'Renouard cuadrática: P1² - P2² = 48 600 · S · Le · Q^1.82 · D^-4.82'}, con P abs = P + ${fmt(p.patm, 1)} mbar. ${vtxt}. Le = L × ${fmt(p.factorLE, 2)}. Criterios: V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %${crit.pmin > 0 ? ` · P2 >= ${crit.pmin} mbar` : ''}.`
       : `Renouard lineal: dP = 23 200 · S · Le · Q^1.82 · D^-4.82. ${vtxt}, P abs = Pf + ${fmt(p.patm, 1)} mbar. Le = L × ${fmt(p.factorLE, 2)}. Criterios: Pf >= ${crit.pmin} mbar · V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %.`;
     doc.text(T(note), M, y + 1, { maxWidth: W - 2 * M });
+    if (d.res.rows.some((r) => r.acc)) {
+      y += 4.2; doc.setFillColor(...hex('#dff1fb')); doc.roundedRect(M, y - 1.9, 3, 3, 0.6, 0.6, 'F');
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(6.8); doc.setTextColor(...hex('#0b5d8f'));
+      doc.text(T('Q y L en azul: tramo entre accesorios (hasta 0.10 m, de tee a tee). No se suma en el balance: es la continuación de la línea principal.'), M + 4.5, y + 0.6);
+    }
     // Balance de caudales: lo que entra a la red debe ser igual a la suma de los consumos (la resta da 0).
     const bal = s.balance;
     if (bal && s.calculated) {
@@ -1569,7 +1607,7 @@ body[data-mode="media"] .only-baja { display: none; }
       const img = Charts.toPNG({ ...spec, fontScale: 1 }, pw * pxPerMm, ph * pxPerMm, 3.6);
       doc.addImage(img, 'PNG', x + 4, yy + 15, pw, ph, undefined, 'FAST');
     };
-    drawChart(d.specs.profile, M, y, cw, ch, 'Presión en cada nodo', 'Todos los nodos · gruesa: hasta la menor presión · delgada: ramales');
+    drawChart(d.specs.profile, M, y, cw, ch, 'Presión en cada nodo', 'Presión que llega a cada punto de la red · línea roja: mínima permitida');
     drawChart(d.specs.vel, M + cw + 6, y, cw, ch, 'Velocidad por tramo', 'Rojo: supera el límite · ámbar: >= 80 % del límite');
     y += ch + 8;
 
@@ -2012,6 +2050,7 @@ body[data-mode="media"] .only-baja { display: none; }
       const r = res.rows[+row.dataset.i];
       if (!r) return;
       row.classList.toggle('ok', !!(r.valid && r.ok)); row.classList.toggle('bad', !!(r.valid && !r.ok));
+      row.classList.toggle('acc', !!r.acc);
       const chip = row.querySelector('.res-chip');
       chip.innerHTML = r.valid
         ? `${statusChip(r)}<span class="rc-vals"><span>Pf <b>${fmt(r.pf, 2)}</b></span><span>V <b>${fmt(r.v, 2)}</b></span></span>${r.ok ? '' : `<span class="rc-why">${esc(why(r))}</span>`}`
@@ -2056,7 +2095,9 @@ body[data-mode="media"] .only-baja { display: none; }
       if (!r.valid) return { r, cells: null };
       const vT = tone(usage(r.v, c.vmax)), lT = tone(usage(r.lossPct, c.maxLossPct));
       const pT = r.pf < c.pmin || r.pf <= 0 ? 'bad' : 'ok';
-      const common = [[`${r.ini}-${r.fin}${r.viaTee ? ` (desde ${r.from})` : ''}`, ''], [fmt(r.q, 2), ''], [fmt(r.l, 2), ''], [fmt(r.le, 2), ''], [matShort(r.mat), ''], [dnLabel(r), ''], [fmt(r.d, 1), '']];
+      // Tramos entre accesorios (≤ 0.10 m): Q y L en otro color, porque no se suman en el balance.
+      const acc = r.acc ? 'c-acc' : '';
+      const common = [[`${r.ini}-${r.fin}`, ''], [fmt(r.q, 2), acc], [fmt(r.l, 2), acc], [fmt(r.le, 2), ''], [matShort(r.mat), ''], [dnLabel(r), ''], [fmt(r.d, 1), '']];
       const mid = media
         ? [[fmt(r.pi, 2), ''], [fmt(r.p1Abs, 1), ''], [fmt(r.p2Abs, 1), ''], [fmt(r.pf, 2), 'c-' + pT], [fmt(r.psi, 3), ''], [fmt(r.lossPct, 2), 'c-' + lT], [fmt(r.v, 2), 'c-' + vT]]
         : [[fmt(r.pi, 3), ''], [fmt(r.dp, 3), ''], [fmt(r.pf, 3), 'c-' + pT], [fmt(r.lossPct, 2), 'c-' + lT], [fmt(r.v, 2), 'c-' + vT]];
@@ -2085,29 +2126,15 @@ body[data-mode="media"] .only-baja { display: none; }
       const empty = { empty: true, emptyText: 'Agregue tramos con caudal, longitud y diámetro' };
       return { profile: empty, vel: empty };
     }
-    // Todos los nodos de la red: la fuente y el final de cada tramo calculado.
-    const onPath = new Set(res.path);
-    const points = [], idxOf = new Map(), links = [];
-    valid.forEach((r) => {
-      if (r.parent < 0 && !idxOf.has('src:' + r.ini)) {
-        idxOf.set('src:' + r.ini, points.length);
-        points.push({ x: 0, y: r.pi, label: r.ini, main: true, tip: `<b>Nodo ${esc(r.ini)} (inicio)</b>${fmt(r.pi, 2)} mbar` });
-      }
-    });
-    valid.forEach((r) => {
-      idxOf.set(r.index, points.length);
-      points.push({ x: r.dist, y: r.pf, label: r.fin, bad: !r.ok, main: onPath.has(r.index), tip: `<b>Nodo ${esc(r.fin)}</b>P = ${fmt(r.pf, 2)} mbar<br>Distancia ${fmt(r.dist, 1)} m · tramo ${esc(r.ini)}-${esc(r.fin)}` });
-    });
-    valid.forEach((r) => {
-      const from = r.parent >= 0 ? idxOf.get(r.parent) : idxOf.get('src:' + r.ini);
-      if (from != null) links.push([from, idxOf.get(r.index), onPath.has(r.index)]);
-    });
-    // El recorrido principal va en orden desde la fuente.
-    links.sort((a, b) => (b[2] - a[2]) || 0);
-    const mainLinks = res.path.map((i) => links.find((l) => l[1] === idxOf.get(i))).filter(Boolean);
-    const otherLinks = links.filter((l) => !l[2]);
+    // Presión en cada nodo: la fuente y el final de cada tramo, en el orden de la tabla.
+    const nodes = [];
+    valid.forEach((r) => { if (r.parent < 0 && !nodes.some((x) => x.label === r.from)) nodes.push({ label: r.from, value: r.pi, status: 'ok', tip: `<b>Nodo ${esc(r.from)} (inicio)</b>${fmt(r.pi, 2)} mbar` }); });
+    valid.forEach((r) => nodes.push({
+      label: r.fin, value: r.pf, status: r.pf < p.crit.pmin ? 'bad' : 'ok',
+      tip: `<b>Nodo ${esc(r.fin)}</b>${fmt(r.pf, 2)} mbar al final del tramo ${esc(r.ini)}-${esc(r.fin)}<br>Pérdida en el tramo ${fmt(r.dp, 3)} mbar`
+    }));
     const profile = {
-      kind: 'line', points, links: [...mainLinks, ...otherLinks], xLabel: 'Distancia equivalente (m)', yLabel: 'Presión (mbar)', color: null,
+      kind: 'dots', bars: nodes, xLabel: 'Nodo', yLabel: 'Presión (mbar)',
       refs: p.crit.pmin > 0 ? [{ y: p.crit.pmin, label: `Mínima ${p.crit.pmin} mbar` }] : []
     };
     const vel = {

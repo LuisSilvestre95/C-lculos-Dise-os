@@ -54,7 +54,7 @@
     const X0 = pad.l, X1 = w - pad.r, Y0 = pad.t, Y1 = h - pad.b;
 
     // Dominio Y
-    let ys = spec.kind === 'bars' ? spec.bars.map((b) => b.value) : spec.points.map((p) => p.y);
+    let ys = spec.kind === 'bars' || spec.kind === 'dots' ? spec.bars.map((b) => b.value) : spec.points.map((p) => p.y);
     (spec.refs || []).forEach((r) => ys.push(r.y));
     ys = ys.filter(Number.isFinite);
     let yMin = spec.yMin != null ? Math.min(spec.yMin, ...ys) : Math.min(...ys);
@@ -135,6 +135,32 @@
         ctx.fillText(m.label, x + (ctx.textAlign === 'left' ? 5 : -5) * fs, Y0 + 2 * fs);
       });
       layout.sx = sx;
+    } else if (spec.kind === 'dots') {
+      // Un punto por nodo (eje X por categorías) con su valor escrito encima: fácil de leer.
+      const n = spec.bars.length, slot = (X1 - X0) / n;
+      ctx.textAlign = 'center';
+      spec.bars.forEach((b, i) => {
+        const cx = X0 + slot * (i + 0.5), y = sy(b.value);
+        const col = b.status === 'bad' ? t.bad : b.status === 'warn' ? t.warn : (spec.color || t.s1);
+        // guía vertical suave desde el eje hasta el punto
+        ctx.strokeStyle = t.grid; ctx.lineWidth = 1; ctx.setLineDash([2 * fs, 3 * fs]);
+        ctx.beginPath(); ctx.moveTo(Math.round(cx) + 0.5, Y1); ctx.lineTo(Math.round(cx) + 0.5, y); ctx.stroke(); ctx.setLineDash([]);
+        ctx.globalAlpha = hover && hover.index !== i ? 0.55 : 1;
+        ctx.beginPath(); ctx.arc(cx, y, 4.2 * fs, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+        ctx.lineWidth = 1.6 * fs; ctx.strokeStyle = t.surface; ctx.stroke(); ctx.globalAlpha = 1;
+        if (n <= 18) {
+          ctx.fillStyle = t.ink; ctx.font = F(n > 12 ? 8.5 : 9.5, 700);
+          // Si los valores no caben uno al lado del otro, se alternan arriba y abajo del punto.
+          const tight = ctx.measureText('00.00').width + 6 * fs > slot;
+          const below = tight && i % 2 === 1;
+          ctx.textBaseline = below ? 'top' : 'bottom';
+          ctx.fillText(b.value.toFixed(2), cx, below ? y + 7 * fs : y - 7 * fs);
+        }
+        ctx.fillStyle = t.ink2; ctx.font = F(n > 14 ? 9 : 10.5, 700); ctx.textBaseline = 'top';
+        if (n <= 24 || i % 2 === 0) ctx.fillText(b.label, cx, Y1 + 7 * fs);
+        layout.items.push({ px: cx, py: y, w: slot, ...b });
+      });
+      if (spec.xLabel) { ctx.fillStyle = t.ink2; ctx.font = F(10, 600); ctx.textBaseline = 'top'; ctx.fillText(spec.xLabel, (X0 + X1) / 2, Y1 + 20 * fs); }
     } else {
       const n = spec.bars.length;
       const slot = (X1 - X0) / n;
