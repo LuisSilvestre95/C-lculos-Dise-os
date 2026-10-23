@@ -208,11 +208,6 @@
       ? `${muller ? 'Müller: P1² - P2² = (Q · S^0.425 · Le^0.576 / (4.61e-5 · D^2.725))^1.74' : 'Renouard cuadrática: P1² - P2² = 48 600 · S · Le · Q^1.82 · D^-4.82'}, con P abs = P + ${fmt(p.patm, 1)} mbar. ${vtxt}. Le = L × ${fmt(p.factorLE, 2)}. Criterios: V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %${crit.pmin > 0 ? ` · P2 >= ${crit.pmin} mbar` : ''}.`
       : `Renouard lineal: dP = 23 200 · S · Le · Q^1.82 · D^-4.82. ${vtxt}, P abs = Pf + ${fmt(p.patm, 1)} mbar. Le = L × ${fmt(p.factorLE, 2)}. Criterios: Pf >= ${crit.pmin} mbar · V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %.`;
     doc.text(T(note), M, y + 1, { maxWidth: W - 2 * M });
-    if (d.res.rows.some((r) => r.acc)) {
-      y += 4.2; doc.setFillColor(...hex('#dff1fb')); doc.roundedRect(M, y - 1.9, 3, 3, 0.6, 0.6, 'F');
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(6.8); doc.setTextColor(...hex('#0b5d8f'));
-      doc.text(T('Q y L en azul: tramo entre accesorios (hasta 0.10 m, de tee a tee). No se suma en el balance: es la continuación de la línea principal.'), M + 4.5, y + 0.6);
-    }
     // Balance de caudales: lo que entra a la red debe ser igual a la suma de los consumos (la resta da 0).
     const bal = s.balance;
     if (bal && s.calculated) {

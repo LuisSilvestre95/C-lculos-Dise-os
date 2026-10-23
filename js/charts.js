@@ -138,6 +138,10 @@
     } else if (spec.kind === 'dots') {
       // Un punto por nodo (eje X por categorías) con su valor escrito encima: fácil de leer.
       const n = spec.bars.length, slot = (X1 - X0) / n;
+      // Línea que une los puntos en el orden de los nodos
+      ctx.strokeStyle = spec.color || t.s1; ctx.lineWidth = 1.75 * fs; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.beginPath();
+      spec.bars.forEach((b, i) => { const x = X0 + slot * (i + 0.5), yy = sy(b.value); i ? ctx.lineTo(x, yy) : ctx.moveTo(x, yy); });
+      ctx.stroke();
       ctx.textAlign = 'center';
       spec.bars.forEach((b, i) => {
         const cx = X0 + slot * (i + 0.5), y = sy(b.value);
