@@ -405,6 +405,28 @@ body[data-mode="media"] .only-baja { display: none; }
 .res-table td.c-acc { background: var(--acc-bg) !important; color: var(--acc); font-weight: 800; }
 .seg-row.acc .c-q input, .seg-row.acc .c-l input { background: var(--acc-bg); color: var(--acc); border-color: color-mix(in srgb, var(--acc) 35%, var(--line-2)); font-weight: 800; }
 
+/* Resta de caudales bajo la columna Caudal (tabla de tramos) */
+.seg-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 4px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.seg-foot[hidden] { display: none; }
+.seg-foot .sf-lbl { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; color: var(--ink); }
+.seg-foot .sf-lbl svg { width: 16px; height: 16px; flex: none; }
+.seg-foot .sf-box { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 6px 10px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line-2); }
+.seg-foot .sf-box strong { font-size: 15px; }
+.seg-foot .sf-items { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; }
+.seg-foot .sf-items em { font-style: normal; font-weight: 700; color: var(--warn); }
+.seg-foot.ok .sf-lbl svg, .seg-foot.ok .sf-box strong { color: var(--ok); }
+.seg-foot.ok .sf-box { background: var(--ok-bg); border-color: transparent; }
+.seg-foot.bad .sf-lbl svg, .seg-foot.bad .sf-box strong { color: var(--warn); }
+.seg-foot.bad .sf-box { background: var(--warn-bg); border-color: transparent; }
+@media (min-width: 1100px) {
+  /* Misma rejilla que las filas: el cuadro queda justo debajo de la columna Caudal. */
+  .seg-foot { display: grid; grid-template-columns: 40px 64px 64px minmax(76px, .9fr) minmax(76px, .9fr) minmax(170px, 1.7fr) minmax(170px, 1.7fr) 70px minmax(132px, 1.2fr) 84px; gap: 8px; margin-top: 8px; padding: 8px 12px 8px 16px; }
+  .seg-foot .sf-lbl { grid-column: 1 / 4; justify-content: flex-end; text-align: right; line-height: 1.2; }
+  .seg-foot .sf-box { grid-column: 4; flex-direction: column; align-items: center; gap: 1px; padding: 6px 4px; text-align: center; font-size: 11px; }
+  .seg-foot .sf-box strong { font-size: 16px; }
+  .seg-foot .sf-items { grid-column: 5 / 11; }
+}
+
 </style>
 <script>
   // Aplica el tema antes de pintar para evitar parpadeo.
@@ -572,6 +594,7 @@ body[data-mode="media"] .only-baja { display: none; }
           <span>Material</span><span>Diámetro</span><span>Ø int.<br><i>mm</i></span><span>Estado</span><span></span>
         </div>
         <div id="segBody"></div>
+        <div class="seg-foot" id="segFoot" role="status" aria-live="polite" hidden></div>
       </div>
       <div class="notice" id="netNotice" hidden></div>
       <div class="row-actions">
@@ -648,7 +671,7 @@ body[data-mode="media"] .only-baja { display: none; }
     <div>
       <p><b>TODO GAS SYR S.A.S.</b> · NIT 901.126.243-3 · Colombia</p>
       <p>Diseño y cálculos: Luis Silvestre · Ingeniero MP 041122-0809747 BYC — COPNIA</p>
-      <p>Tel. 322 361 8360 · 320 948 5534 · © 2026 · <span class="app-version">Versión 3.5</span></p>
+      <p>Tel. 322 361 8360 · 320 948 5534 · © 2026 · <span class="app-version">Versión 3.6</span></p>
     </div>
   </div>
 </footer>
@@ -802,8 +825,21 @@ body[data-mode="media"] .only-baja { display: none; }
     ['Florencia', 'Caquetá', 242], ['Mocoa', 'Putumayo', 604], ['Leticia', 'Amazonas', 96],
     ['Quibdó', 'Chocó', 43], ['Barranquilla', 'Atlántico', 18], ['Cartagena', 'Bolívar', 2],
     ['Santa Marta', 'Magdalena', 6], ['Montería', 'Córdoba', 18], ['Sincelejo', 'Sucre', 213],
-    ['Valledupar', 'Cesar', 169], ['Riohacha', 'La Guajira', 6], ['San Andrés', 'San Andrés', 1]
-  ].map(([name, dept, alt]) => ({ name, dept, alt }));
+    ['Valledupar', 'Cesar', 169], ['Riohacha', 'La Guajira', 6], ['San Andrés', 'San Andrés', 1],
+    // Valle de Tenza, Neira, Lengupá y oriente de Boyacá (altitud aproximada de la cabecera municipal).
+    // Se agregan al final para no cambiar los municipios guardados en proyectos anteriores.
+    ['Sutatenza', 'Boyacá', 1885, 'VT'], ['Tenza', 'Boyacá', 1600, 'VT'], ['La Capilla', 'Boyacá', 1750, 'VT'],
+    ['Chinavita', 'Boyacá', 1880, 'VT'], ['Pachavita', 'Boyacá', 1985, 'VT'], ['Guayatá', 'Boyacá', 1862, 'VT'],
+    ['Somondoco', 'Boyacá', 1670, 'VT'], ['Almeida', 'Boyacá', 1925, 'VT'], ['Chivor', 'Boyacá', 1800, 'VT'],
+    ['Macanal', 'Boyacá', 1280, 'VT'], ['Santa María', 'Boyacá', 980, 'VT'], ['San Luis de Gaceno', 'Boyacá', 470, 'VT'],
+    ['Campohermoso', 'Boyacá', 1150, 'VT'], ['Berbeo', 'Boyacá', 1650, 'VT'], ['Páez', 'Boyacá', 1600, 'VT'],
+    ['Miraflores', 'Boyacá', 1432, 'VT'], ['Zetaquira', 'Boyacá', 1650, 'VT'], ['Rondón', 'Boyacá', 2100, 'VT'],
+    ['Ramiriquí', 'Boyacá', 2325, 'VT'], ['Úmbita', 'Boyacá', 2482, 'VT'], ['Tibaná', 'Boyacá', 2115, 'VT'],
+    ['Jenesano', 'Boyacá', 2076, 'VT'], ['Nuevo Colón', 'Boyacá', 2430, 'VT'], ['Turmequé', 'Boyacá', 2389, 'VT'],
+    ['Ventaquemada', 'Boyacá', 2630, 'VT'], ['Ciénega', 'Boyacá', 2460, 'VT'], ['Viracachá', 'Boyacá', 2650, 'VT'],
+    ['Boyacá', 'Boyacá', 2420, 'VT'], ['Machetá', 'Cundinamarca', 2097, 'VT'], ['Manta', 'Cundinamarca', 1960, 'VT'],
+    ['Tibirita', 'Cundinamarca', 1980, 'VT']
+  ].map(([name, dept, alt, region]) => ({ name, dept, alt, region: region || (['Garagoa', 'Guateque'].includes(name) ? 'VT' : '') }));
 
   const GASES = {
     GN: { label: 'Gas natural', G: 0.67, pcs: 10.35 },          // PCS ≈ 37.3 MJ/m³
@@ -1577,18 +1613,7 @@ body[data-mode="media"] .only-baja { display: none; }
       ? `${muller ? 'Müller: P1² - P2² = (Q · S^0.425 · Le^0.576 / (4.61e-5 · D^2.725))^1.74' : 'Renouard cuadrática: P1² - P2² = 48 600 · S · Le · Q^1.82 · D^-4.82'}, con P abs = P + ${fmt(p.patm, 1)} mbar. ${vtxt}. Le = L × ${fmt(p.factorLE, 2)}. Criterios: V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %${crit.pmin > 0 ? ` · P2 >= ${crit.pmin} mbar` : ''}.`
       : `Renouard lineal: dP = 23 200 · S · Le · Q^1.82 · D^-4.82. ${vtxt}, P abs = Pf + ${fmt(p.patm, 1)} mbar. Le = L × ${fmt(p.factorLE, 2)}. Criterios: Pf >= ${crit.pmin} mbar · V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %.`;
     doc.text(T(note), M, y + 1, { maxWidth: W - 2 * M });
-    // Balance de caudales: lo que entra a la red debe ser igual a la suma de los consumos (la resta da 0).
-    const bal = s.balance;
-    if (bal && s.calculated) {
-      const yb = y + 8.5, ok = bal.ok;
-      doc.setFillColor(...(ok ? C.okBg : C.warnBg)); doc.roundedRect(M, yb - 4.2, W - 2 * M, 7.2, 1.6, 1.6, 'F');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...(ok ? C.ok : C.warn));
-      const head = `Balance de caudales: entra ${fmt(bal.qIn, 2)} m³/h = consumos ${fmt(bal.qCons, 2)} m³/h · diferencia ${fmt(Math.abs(bal.diff) < 0.005 ? 0 : bal.diff, 2)}`;
-      doc.text(T(head), M + 3, yb);
-      const hw = doc.getTextWidth(T(head)); // medido en negrita, antes de cambiar la letra
-      doc.setFont('helvetica', 'normal'); doc.setTextColor(...C.ink2);
-      oneLine(T('Consumo por nodo: ' + bal.consumos.map((c) => `${c.node} ${fmt(c.q, 2)}`).join(' · ')), M + 3 + hw + 6, yb, W - 2 * M - hw - 14, 7.6);
-    }
+    // El balance de caudales solo se muestra en la app (uso interno), no en el PDF.
 
     /* ===== PÁGINA 2: GRÁFICAS + FIRMA ===== */
     doc.addPage(); headerSmall();
@@ -1752,7 +1777,11 @@ body[data-mode="media"] .only-baja { display: none; }
   function fillSelects() {
     const cs = $('#city');
     const opts = E.CITIES.map((c, i) => ({ i, c })).sort((a, b) => a.c.name.localeCompare(b.c.name, 'es'));
-    cs.innerHTML = opts.map(({ i, c }) => `<option value="${i}">${esc(c.name)} · ${esc(c.dept)} (${c.alt} m)</option>`).join('') + '<option value="custom">⚙ Personalizado (altitud / presión manual)</option>';
+    const opt = ({ i, c }) => `<option value="${i}">${esc(c.name)} · ${esc(c.dept)} (${c.alt} m)</option>`;
+    // Primero el Valle de Tenza y el oriente de Boyacá (zona de trabajo), luego el resto del país.
+    cs.innerHTML = `<optgroup label="Valle de Tenza y oriente de Boyacá">${opts.filter((o) => o.c.region === 'VT').map(opt).join('')}</optgroup>`
+      + `<optgroup label="Otras ciudades de Colombia">${opts.filter((o) => o.c.region !== 'VT').map(opt).join('')}</optgroup>`
+      + '<option value="custom">⚙ Personalizado (altitud / presión manual)</option>';
     $('#gas').innerHTML = Object.entries(E.GASES).map(([k, g]) => `<option value="${k}">${esc(g.label)}</option>`).join('');
   }
   const isGLP = (g) => ['GLP', 'GLPM', 'BUT'].includes(g);
@@ -2003,6 +2032,7 @@ body[data-mode="media"] .only-baja { display: none; }
     renderNotices(res);
     renderResults(res);
     renderBalance(res);
+    renderSegFoot(res);
     renderCharts(last);
   }
 
@@ -2071,6 +2101,18 @@ body[data-mode="media"] .only-baja { display: none; }
     el.hidden = false; el.className = 'balance-line ' + (b.ok ? 'ok' : 'bad');
     const items = b.consumos.map((c) => `${esc(c.node)} ${fmt(c.q, 2)}`).join(' · ');
     el.innerHTML = `${icon(b.ok ? 'check' : 'alert')}<span>Balance de caudales: entra <b>${fmt(b.qIn, 2)} m³/h</b> = consumos <b>${fmt(b.qCons, 2)} m³/h</b> · diferencia <b>${fmt(Math.abs(b.diff) < 0.005 ? 0 : b.diff, 2)}</b></span><span class="bl-items">Consumo por nodo: ${items || '—'}</span>`;
+  }
+  // Cuadro de resta bajo la columna Caudal: lo que entra a la red menos la suma de consumos, en vivo.
+  function renderSegFoot(res) {
+    const el = $('#segFoot'), b = res.summary.balance;
+    if (!b || !M().segs.length || !(b.qIn > 0)) { el.hidden = true; return; }
+    const d = Math.abs(b.diff) < 0.005 ? 0 : b.diff;
+    const ok = Math.abs(b.diff) <= Math.max(0.02, b.qIn * 0.005);
+    el.hidden = false; el.className = 'seg-foot ' + (ok ? 'ok' : 'bad');
+    const items = b.consumos.map((c) => `<span><b>${esc(c.node)}</b> ${fmt(c.q, 2)}</span>`).join('');
+    el.innerHTML = `<span class="sf-lbl">${icon(ok ? 'check' : 'alert')}Resta de caudales</span>`
+      + `<div class="sf-box"><span>Entra <b>${fmt(b.qIn, 2)}</b></span><span>− Consumos <b>${fmt(b.qCons, 2)}</b></span><strong>= ${fmt(d, 2)}</strong></div>`
+      + `<span class="sf-items">${items ? 'Consumo por nodo: ' + items : 'Aún no hay consumos en los nodos finales.'}${ok ? '' : ' <em>La resta debe dar 0: revise los caudales.</em>'}</span>`;
   }
   function renderNotices(res) {
     const box = $('#netNotice');

@@ -135,8 +135,21 @@
     ['Florencia', 'Caquetá', 242], ['Mocoa', 'Putumayo', 604], ['Leticia', 'Amazonas', 96],
     ['Quibdó', 'Chocó', 43], ['Barranquilla', 'Atlántico', 18], ['Cartagena', 'Bolívar', 2],
     ['Santa Marta', 'Magdalena', 6], ['Montería', 'Córdoba', 18], ['Sincelejo', 'Sucre', 213],
-    ['Valledupar', 'Cesar', 169], ['Riohacha', 'La Guajira', 6], ['San Andrés', 'San Andrés', 1]
-  ].map(([name, dept, alt]) => ({ name, dept, alt }));
+    ['Valledupar', 'Cesar', 169], ['Riohacha', 'La Guajira', 6], ['San Andrés', 'San Andrés', 1],
+    // Valle de Tenza, Neira, Lengupá y oriente de Boyacá (altitud aproximada de la cabecera municipal).
+    // Se agregan al final para no cambiar los municipios guardados en proyectos anteriores.
+    ['Sutatenza', 'Boyacá', 1885, 'VT'], ['Tenza', 'Boyacá', 1600, 'VT'], ['La Capilla', 'Boyacá', 1750, 'VT'],
+    ['Chinavita', 'Boyacá', 1880, 'VT'], ['Pachavita', 'Boyacá', 1985, 'VT'], ['Guayatá', 'Boyacá', 1862, 'VT'],
+    ['Somondoco', 'Boyacá', 1670, 'VT'], ['Almeida', 'Boyacá', 1925, 'VT'], ['Chivor', 'Boyacá', 1800, 'VT'],
+    ['Macanal', 'Boyacá', 1280, 'VT'], ['Santa María', 'Boyacá', 980, 'VT'], ['San Luis de Gaceno', 'Boyacá', 470, 'VT'],
+    ['Campohermoso', 'Boyacá', 1150, 'VT'], ['Berbeo', 'Boyacá', 1650, 'VT'], ['Páez', 'Boyacá', 1600, 'VT'],
+    ['Miraflores', 'Boyacá', 1432, 'VT'], ['Zetaquira', 'Boyacá', 1650, 'VT'], ['Rondón', 'Boyacá', 2100, 'VT'],
+    ['Ramiriquí', 'Boyacá', 2325, 'VT'], ['Úmbita', 'Boyacá', 2482, 'VT'], ['Tibaná', 'Boyacá', 2115, 'VT'],
+    ['Jenesano', 'Boyacá', 2076, 'VT'], ['Nuevo Colón', 'Boyacá', 2430, 'VT'], ['Turmequé', 'Boyacá', 2389, 'VT'],
+    ['Ventaquemada', 'Boyacá', 2630, 'VT'], ['Ciénega', 'Boyacá', 2460, 'VT'], ['Viracachá', 'Boyacá', 2650, 'VT'],
+    ['Boyacá', 'Boyacá', 2420, 'VT'], ['Machetá', 'Cundinamarca', 2097, 'VT'], ['Manta', 'Cundinamarca', 1960, 'VT'],
+    ['Tibirita', 'Cundinamarca', 1980, 'VT']
+  ].map(([name, dept, alt, region]) => ({ name, dept, alt, region: region || (['Garagoa', 'Guateque'].includes(name) ? 'VT' : '') }));
 
   const GASES = {
     GN: { label: 'Gas natural', G: 0.67, pcs: 10.35 },          // PCS ≈ 37.3 MJ/m³

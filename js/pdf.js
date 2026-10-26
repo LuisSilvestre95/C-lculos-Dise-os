@@ -208,18 +208,7 @@
       ? `${muller ? 'Müller: P1² - P2² = (Q · S^0.425 · Le^0.576 / (4.61e-5 · D^2.725))^1.74' : 'Renouard cuadrática: P1² - P2² = 48 600 · S · Le · Q^1.82 · D^-4.82'}, con P abs = P + ${fmt(p.patm, 1)} mbar. ${vtxt}. Le = L × ${fmt(p.factorLE, 2)}. Criterios: V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %${crit.pmin > 0 ? ` · P2 >= ${crit.pmin} mbar` : ''}.`
       : `Renouard lineal: dP = 23 200 · S · Le · Q^1.82 · D^-4.82. ${vtxt}, P abs = Pf + ${fmt(p.patm, 1)} mbar. Le = L × ${fmt(p.factorLE, 2)}. Criterios: Pf >= ${crit.pmin} mbar · V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %.`;
     doc.text(T(note), M, y + 1, { maxWidth: W - 2 * M });
-    // Balance de caudales: lo que entra a la red debe ser igual a la suma de los consumos (la resta da 0).
-    const bal = s.balance;
-    if (bal && s.calculated) {
-      const yb = y + 8.5, ok = bal.ok;
-      doc.setFillColor(...(ok ? C.okBg : C.warnBg)); doc.roundedRect(M, yb - 4.2, W - 2 * M, 7.2, 1.6, 1.6, 'F');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...(ok ? C.ok : C.warn));
-      const head = `Balance de caudales: entra ${fmt(bal.qIn, 2)} m³/h = consumos ${fmt(bal.qCons, 2)} m³/h · diferencia ${fmt(Math.abs(bal.diff) < 0.005 ? 0 : bal.diff, 2)}`;
-      doc.text(T(head), M + 3, yb);
-      const hw = doc.getTextWidth(T(head)); // medido en negrita, antes de cambiar la letra
-      doc.setFont('helvetica', 'normal'); doc.setTextColor(...C.ink2);
-      oneLine(T('Consumo por nodo: ' + bal.consumos.map((c) => `${c.node} ${fmt(c.q, 2)}`).join(' · ')), M + 3 + hw + 6, yb, W - 2 * M - hw - 14, 7.6);
-    }
+    // El balance de caudales solo se muestra en la app (uso interno), no en el PDF.
 
     /* ===== PÁGINA 2: GRÁFICAS + FIRMA ===== */
     doc.addPage(); headerSmall();

@@ -105,7 +105,11 @@
   function fillSelects() {
     const cs = $('#city');
     const opts = E.CITIES.map((c, i) => ({ i, c })).sort((a, b) => a.c.name.localeCompare(b.c.name, 'es'));
-    cs.innerHTML = opts.map(({ i, c }) => `<option value="${i}">${esc(c.name)} · ${esc(c.dept)} (${c.alt} m)</option>`).join('') + '<option value="custom">⚙ Personalizado (altitud / presión manual)</option>';
+    const opt = ({ i, c }) => `<option value="${i}">${esc(c.name)} · ${esc(c.dept)} (${c.alt} m)</option>`;
+    // Primero el Valle de Tenza y el oriente de Boyacá (zona de trabajo), luego el resto del país.
+    cs.innerHTML = `<optgroup label="Valle de Tenza y oriente de Boyacá">${opts.filter((o) => o.c.region === 'VT').map(opt).join('')}</optgroup>`
+      + `<optgroup label="Otras ciudades de Colombia">${opts.filter((o) => o.c.region !== 'VT').map(opt).join('')}</optgroup>`
+      + '<option value="custom">⚙ Personalizado (altitud / presión manual)</option>';
     $('#gas').innerHTML = Object.entries(E.GASES).map(([k, g]) => `<option value="${k}">${esc(g.label)}</option>`).join('');
   }
   const isGLP = (g) => ['GLP', 'GLPM', 'BUT'].includes(g);
@@ -356,6 +360,7 @@
     renderNotices(res);
     renderResults(res);
     renderBalance(res);
+    renderSegFoot(res);
     renderCharts(last);
   }
 
@@ -424,6 +429,18 @@
     el.hidden = false; el.className = 'balance-line ' + (b.ok ? 'ok' : 'bad');
     const items = b.consumos.map((c) => `${esc(c.node)} ${fmt(c.q, 2)}`).join(' · ');
     el.innerHTML = `${icon(b.ok ? 'check' : 'alert')}<span>Balance de caudales: entra <b>${fmt(b.qIn, 2)} m³/h</b> = consumos <b>${fmt(b.qCons, 2)} m³/h</b> · diferencia <b>${fmt(Math.abs(b.diff) < 0.005 ? 0 : b.diff, 2)}</b></span><span class="bl-items">Consumo por nodo: ${items || '—'}</span>`;
+  }
+  // Cuadro de resta bajo la columna Caudal: lo que entra a la red menos la suma de consumos, en vivo.
+  function renderSegFoot(res) {
+    const el = $('#segFoot'), b = res.summary.balance;
+    if (!b || !M().segs.length || !(b.qIn > 0)) { el.hidden = true; return; }
+    const d = Math.abs(b.diff) < 0.005 ? 0 : b.diff;
+    const ok = Math.abs(b.diff) <= Math.max(0.02, b.qIn * 0.005);
+    el.hidden = false; el.className = 'seg-foot ' + (ok ? 'ok' : 'bad');
+    const items = b.consumos.map((c) => `<span><b>${esc(c.node)}</b> ${fmt(c.q, 2)}</span>`).join('');
+    el.innerHTML = `<span class="sf-lbl">${icon(ok ? 'check' : 'alert')}Resta de caudales</span>`
+      + `<div class="sf-box"><span>Entra <b>${fmt(b.qIn, 2)}</b></span><span>− Consumos <b>${fmt(b.qCons, 2)}</b></span><strong>= ${fmt(d, 2)}</strong></div>`
+      + `<span class="sf-items">${items ? 'Consumo por nodo: ' + items : 'Aún no hay consumos en los nodos finales.'}${ok ? '' : ' <em>La resta debe dar 0: revise los caudales.</em>'}</span>`;
   }
   function renderNotices(res) {
     const box = $('#netNotice');
