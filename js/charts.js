@@ -29,6 +29,13 @@
   }
   const fmtTick = (v, step) => { const d = step >= 1 ? 0 : Math.min(3, Math.ceil(-Math.log10(step))); return v.toFixed(d); };
 
+  /** Cada cuántas etiquetas del eje X se escribe una, para que nunca se monten unas sobre otras. */
+  function labelStep(ctx, labels, slot, font) {
+    ctx.font = font;
+    const wMax = Math.max(1, ...labels.map((l) => ctx.measureText(String(l)).width));
+    return Math.max(1, Math.ceil((wMax + 6) / slot));
+  }
+
   function roundRectTop(ctx, x, y, w, h, r) {
     r = Math.min(r, w / 2, Math.abs(h));
     ctx.beginPath();
@@ -51,7 +58,7 @@
       return null;
     }
     const pad = { l: 46 * fs, r: 14 * fs, t: 18 * fs, b: 36 * fs };
-    const X0 = pad.l, X1 = w - pad.r, Y0 = pad.t, Y1 = h - pad.b;
+    const Y0 = pad.t, Y1 = h - pad.b;
 
     // Dominio Y
     let ys = spec.kind === 'bars' || spec.kind === 'dots' ? spec.bars.map((b) => b.value) : spec.points.map((p) => p.y);
@@ -60,9 +67,17 @@
     let yMin = spec.yMin != null ? Math.min(spec.yMin, ...ys) : Math.min(...ys);
     let yMax = Math.max(...ys);
     if (spec.kind === 'bars') yMin = 0;
-    else { const padY = (yMax - yMin) * 0.12 || 1; yMin -= padY; yMax += padY * 0.6; if (spec.yFloor != null) yMin = Math.max(yMin, spec.yFloor); }
+    else {
+      // Escala mínima: una caída pequeña no se dibuja como si fuera enorme.
+      if (spec.minSpan > 0 && yMax - yMin < spec.minSpan) yMin = yMax - spec.minSpan;
+      const padY = (yMax - yMin) * 0.12 || 1; yMin -= padY; yMax += padY * 0.6; if (spec.yFloor != null) yMin = Math.max(yMin, spec.yFloor);
+    }
     const yt = niceTicks(yMin, yMax, h < 240 ? 4 : 5);
     const sy = (v) => Y1 - (v - yt.min) / (yt.max - yt.min) * (Y1 - Y0);
+    // Margen izquierdo según el ancho real de los números del eje Y (así nunca tapan el título del eje).
+    ctx.font = F(10);
+    const tickW = Math.max(...yt.ticks.map((v) => ctx.measureText(fmtTick(v, yt.step)).width));
+    const X0 = Math.max(pad.l, tickW + 30 * fs), X1 = w - pad.r;
 
     // Rejilla + eje Y
     ctx.lineWidth = 1; ctx.strokeStyle = t.grid; ctx.fillStyle = t.ink2; ctx.font = F(10); ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
@@ -148,41 +163,44 @@
         ctx.beginPath(); ctx.moveTo(px(i), sy(a.value)); ctx.lineTo(px(j), sy(b.value)); ctx.stroke();
       });
       ctx.textAlign = 'center';
+      const lblFont = F(n > 14 ? 9 : 10.5, 700), step = labelStep(ctx, spec.bars.map((b) => b.label), slot, lblFont);
+      const rad = Math.max(1.8, Math.min(4.2, slot * 0.28)) * (slot < 8 ? 1 : fs);
       spec.bars.forEach((b, i) => {
         const cx = X0 + slot * (i + 0.5), y = sy(b.value);
         const col = b.status === 'bad' ? t.bad : b.status === 'warn' ? t.warn : (spec.color || t.s1);
         // guía vertical suave desde el eje hasta el punto
-        ctx.strokeStyle = t.grid; ctx.lineWidth = 1; ctx.setLineDash([2 * fs, 3 * fs]);
-        ctx.beginPath(); ctx.moveTo(Math.round(cx) + 0.5, Y1); ctx.lineTo(Math.round(cx) + 0.5, y); ctx.stroke(); ctx.setLineDash([]);
+        if (n <= 30) { ctx.strokeStyle = t.grid; ctx.lineWidth = 1; ctx.setLineDash([2 * fs, 3 * fs]);
+          ctx.beginPath(); ctx.moveTo(Math.round(cx) + 0.5, Y1); ctx.lineTo(Math.round(cx) + 0.5, y); ctx.stroke(); ctx.setLineDash([]); }
         ctx.globalAlpha = hover && hover.index !== i ? 0.55 : 1;
-        ctx.beginPath(); ctx.arc(cx, y, 4.2 * fs, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
-        ctx.lineWidth = 1.6 * fs; ctx.strokeStyle = t.surface; ctx.stroke(); ctx.globalAlpha = 1;
+        ctx.beginPath(); ctx.arc(cx, y, rad, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+        ctx.lineWidth = Math.min(1.6 * fs, rad * 0.4); ctx.strokeStyle = t.surface; ctx.stroke(); ctx.globalAlpha = 1;
         if (n <= 18) {
           ctx.fillStyle = t.ink; ctx.font = F(n > 12 ? 8.5 : 9.5, 700);
           // Si los valores no caben uno al lado del otro, se alternan arriba y abajo del punto.
-          const tight = ctx.measureText('00.00').width + 6 * fs > slot;
+          const tight = ctx.measureText(b.value.toFixed(2)).width + 6 * fs > slot;
           const below = tight && i % 2 === 1;
           ctx.textBaseline = below ? 'top' : 'bottom';
           ctx.fillText(b.value.toFixed(2), cx, below ? y + 7 * fs : y - 7 * fs);
         }
-        ctx.fillStyle = t.ink2; ctx.font = F(n > 14 ? 9 : 10.5, 700); ctx.textBaseline = 'top';
-        if (n <= 24 || i % 2 === 0) ctx.fillText(b.label, cx, Y1 + 7 * fs);
+        ctx.fillStyle = t.ink2; ctx.font = lblFont; ctx.textBaseline = 'top';
+        if (i % step === 0) ctx.fillText(b.label, cx, Y1 + 7 * fs);
         layout.items.push({ px: cx, py: y, w: slot, ...b });
       });
       if (spec.xLabel) { ctx.fillStyle = t.ink2; ctx.font = F(10, 600); ctx.textBaseline = 'top'; ctx.fillText(spec.xLabel, (X0 + X1) / 2, Y1 + 20 * fs); }
     } else {
       const n = spec.bars.length;
       const slot = (X1 - X0) / n;
-      const bw = Math.max(6 * fs, Math.min(28 * fs, slot * 0.46));
-      ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.font = F(n > 12 ? 9 : 10, 600);
+      const bw = Math.max(Math.min(6 * fs, slot * 0.7), Math.min(28 * fs, slot * 0.46));
+      const lblFont = F(n > 12 ? 9 : 10, 600), step = labelStep(ctx, spec.bars.map((b) => b.label), slot, lblFont);
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.font = lblFont;
       spec.bars.forEach((b, i) => {
         const cx = X0 + slot * (i + 0.5);
         const y = sy(Math.max(0, b.value));
         const col = b.status === 'bad' ? t.bad : b.status === 'warn' ? t.warn : (spec.color || t.s1);
         ctx.globalAlpha = hover && hover.index !== i ? 0.55 : 1;
         ctx.fillStyle = col; roundRectTop(ctx, cx - bw / 2, y, bw, Y1 - y, 4 * fs); ctx.fill(); ctx.globalAlpha = 1;
-        if (n <= 16 || i % 2 === 0) { ctx.fillStyle = t.ink2; ctx.fillText(b.label, cx, Y1 + 7 * fs); }
-        if (spec.valueLabels && n <= 12) { ctx.fillStyle = t.ink; ctx.font = F(9.5, 700); ctx.textBaseline = 'bottom'; ctx.fillText(b.value.toFixed(1), cx, y - 3 * fs); ctx.textBaseline = 'top'; ctx.font = F(n > 12 ? 9 : 10, 600); }
+        if (i % step === 0) { ctx.fillStyle = t.ink2; ctx.fillText(b.label, cx, Y1 + 7 * fs); }
+        if (spec.valueLabels && n <= 16) { ctx.fillStyle = t.ink; ctx.font = F(n > 12 ? 8.5 : 9.5, 700); ctx.textBaseline = 'bottom'; ctx.fillText(b.value.toFixed(1), cx, y - 3 * fs); ctx.textBaseline = 'top'; ctx.font = lblFont; }
         layout.items.push({ px: cx, py: y, w: slot, ...b });
       });
       if (spec.xLabel) { ctx.fillStyle = t.ink2; ctx.font = F(10, 600); ctx.fillText(spec.xLabel, (X0 + X1) / 2, Y1 + 20 * fs); }

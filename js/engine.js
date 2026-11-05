@@ -25,7 +25,7 @@
   };
 
   /* Catálogo de tuberías — diámetros según norma de fabricación. */
-  const PIPES = {
+  let PIPES = {
     PEALPE: {
       label: 'PE-AL-PE (multicapa)', short: 'PE-AL-PE',
       norma: 'ISO 17484 / NTC 4579',
@@ -151,7 +151,7 @@
     ['Tibirita', 'Cundinamarca', 1980, 'VT']
   ].map(([name, dept, alt, region]) => ({ name, dept, alt, region: region || (['Garagoa', 'Guateque'].includes(name) ? 'VT' : '') }));
 
-  const GASES = {
+  let GASES = {
     GN: { label: 'Gas natural', G: 0.67, pcs: 10.35 },          // PCS ≈ 37.3 MJ/m³
     GLP: { label: 'GLP propano', G: 1.52, pcs: 26.0 },    // PCS ≈ 93.6 MJ/m³
     GLPM: { label: 'GLP mezcla 60/40', G: 1.71, pcs: 29.2 },
@@ -235,7 +235,8 @@
   const tramoFn = (mode, method) => (mode === 'media' ? (method === 'renouard' ? mediumTramo : mullerTramo) : lowTramo);
 
   function evaluate(r, crit, pi) {
-    const lossPct = pi > 0 ? (r.dp / pi) * 100 : Infinity;
+    // Si la presión de entrada ya se agotó (≤ 0), el tramo pierde el 100 %: rechazado con un valor claro.
+    const lossPct = pi > 0 ? (r.dp / pi) * 100 : 100;
     const checks = {
       pmin: r.pf >= crit.pmin && r.pf > 0,
       vel: r.v <= crit.vmax,
@@ -286,40 +287,35 @@
   const tolQ = (q) => Math.max(0.02, Math.abs(q) * 0.01);
   /**
    * Nodo desde el que realmente toma el gas cada tramo.
-   * Un tramo corto (≤ 0.10 m, entre accesorios) es la continuación de la línea principal: sale de la tee
-   * donde queda justo su caudal. Se recorre la tabla en orden llevando cuánto caudal queda libre en cada
-   * nodo (lo que entra menos lo ya repartido):
-   *   1) si en su propio nodo queda exactamente su caudal, se queda ahí;
-   *   2) si no, se busca aguas arriba la primera tee donde quede exactamente su caudal;
-   *   3) si no hay coincidencia exacta y en su nodo no cabe, sale de la primera tee aguas arriba donde sí cabe.
-   * Los tramos largos nunca se mueven (si no cuadran, el balance lo muestra y se sugiere la corrección).
+   * Un tramo corto (≤ 0.10 m, entre accesorios) es la continuación de la línea principal. Solo se mueve si
+   * en su nodo de inicio NO cabe (por ese nodo saldría más caudal del que le entra): entonces sale de la tee
+   * aguas arriba donde queda justo su caudal sin repartir, o si no hay coincidencia, de la primera donde cabe.
+   * Se mira toda la tabla (no depende del orden de las filas). Los tramos largos nunca se mueven.
    */
   function effectiveStarts(segs) {
     const byFin = new Map(); segs.forEach((s, i) => { if (s.fin && !byFin.has(s.fin)) byFin.set(s.fin, i); });
     const starts = segs.map((s) => s.ini);
-    const used = new Map();
-    const avail = (n) => { const j = byFin.get(n); return j == null ? Infinity : segs[j].q - (used.get(n) || 0); };
-    const up = (n) => { const j = byFin.get(n); return j == null ? null : starts[j]; };
+    const out = new Map();
+    segs.forEach((s) => { if (s.q > 0) out.set(s.ini, (out.get(s.ini) || 0) + s.q); });
+    const inflow = (n) => segs[byFin.get(n)].q;
+    const left = (n) => inflow(n) - (out.get(n) || 0);
+    const up = (n) => starts[byFin.get(n)];
     segs.forEach((s, i) => {
-      let start = s.ini;
-      const corto = !(s.l > LONG_ACCESORIO); // ≤ 0.10 m, o longitud aún sin escribir
-      if (corto && s.q > 0 && byFin.has(start)) {
-        const t = tolQ(s.q);
-        if (!(Math.abs(avail(start) - s.q) <= t)) {
-          let exact = null, fit = null;
-          const seen = new Set([start]);
-          for (let n = up(start); n && !seen.has(n) && byFin.has(n); n = up(n)) {
-            seen.add(n);
-            const a = avail(n);
-            if (Math.abs(a - s.q) <= t) { exact = n; break; }
-            if (fit == null && a + t >= s.q) fit = n;
-          }
-          if (exact) start = exact;
-          else if (avail(start) + t < s.q && fit) start = fit;
-        }
+      const n = starts[i];
+      if (s.l > LONG_ACCESORIO || !(s.q > 0) || !byFin.has(n)) return; // ≤ 0.10 m o longitud aún sin escribir
+      if (!(-left(n) > tolQ(inflow(n)))) return; // en su nodo sí cabe: no se mueve
+      let exact = null, fit = null;
+      const seen = new Set([n]);
+      for (let m = up(n); m && !seen.has(m) && byFin.has(m); m = up(m)) {
+        seen.add(m);
+        const l = left(m);
+        if (Math.abs(l - s.q) <= tolQ(s.q)) { exact = m; break; }
+        if (fit == null && l + tolQ(s.q) >= s.q) fit = m;
       }
-      starts[i] = start;
-      if (s.q > 0) used.set(start, (used.get(start) || 0) + s.q);
+      const to = exact || fit;
+      if (!to) return;
+      starts[i] = to;
+      out.set(n, out.get(n) - s.q); out.set(to, (out.get(to) || 0) + s.q);
     });
     return starts;
   }
@@ -369,8 +365,27 @@
    * @param {Array} segments [{ini, fin, q, l, mat, dn, di}]
    * @param {Object} p { mode, G, patm, pi, factorLE, crit:{pmin,vmax,maxLossPct}, demand (factor 1 = 100 %) }
    */
-  function calcNetwork(segments, p) {
-    const mode = p.mode === 'media' ? 'media' : 'baja';
+  /**
+   * Parámetros depurados: cualquier valor vacío, de texto, negativo o fuera de rango se reemplaza por uno
+   * seguro, así un proyecto guardado o manipulado nunca produce resultados sin sentido.
+   */
+  function cleanParams(p = {}) {
+    const pos = (v, d, max = Infinity) => { const n = num(v, NaN); return n > 0 && n <= max ? n : d; };
+    const c = p.crit || {};
+    return {
+      ...p,
+      mode: p.mode === 'media' ? 'media' : 'baja',
+      G: pos(p.G, 0.67, 5), patm: pos(p.patm, K.P_NIVEL_MAR, 1100), factorLE: pos(p.factorLE, 1.2, 10),
+      kv: pos(p.kv, K.VELOCIDAD, 1000), demand: pos(p.demand, 1, 10), pi: num(p.pi),
+      crit: { pmin: Math.max(0, num(c.pmin)), vmax: pos(c.vmax, 20), maxLossPct: pos(c.maxLossPct, 10, 100) }
+    };
+  }
+  /** Diámetro interno admisible (mm): fuera de este rango el dato es un error de escritura. */
+  const D_MIN = 3, D_MAX = 2000;
+
+  function calcNetwork(segments, p0) {
+    const p = cleanParams(p0);
+    const mode = p.mode;
     const f = tramoFn(mode, p.method);
     const crit = p.crit;
     const demand = num(p.demand, 1);
@@ -390,17 +405,26 @@
       const s = segs[i];
       const parent = topo.parentOf[i];
       const pi = parent < 0 ? num(p.pi) : (rows[parent] && rows[parent].valid ? rows[parent].pf : NaN);
-      const le = s.l * num(p.factorLE, 1.2);
+      const le = s.l * p.factorLE;
       const base = { index: i, ini: s.iniOrig, fin: s.fin, from: s.ini, viaTee: s.ini !== s.iniOrig, acc: s.l > 0 && s.l <= LONG_ACCESORIO, q: s.q, qBase: s.qBase, l: s.l, le, d: s.d, mat: s.mat, dn: s.dn, pi, parent };
-      if (!(s.q > 0) || !(s.l > 0) || !(s.d > 0) || !Number.isFinite(pi)) {
-        rows[i] = { ...base, valid: false, reason: !(s.q > 0) ? 'Caudal' : !(s.l > 0) ? 'Longitud' : !(s.d > 0) ? 'Diámetro' : 'Presión de entrada' };
+      const dOk = s.d >= D_MIN && s.d <= D_MAX;
+      const piOk = Number.isFinite(pi) && (parent >= 0 || pi > 0);
+      if (!s.iniOrig || !s.fin || !(s.q > 0) || !(s.l > 0) || !dOk || !piOk) {
+        rows[i] = { ...base, valid: false, reason: !s.iniOrig || !s.fin ? 'Nodo' : !(s.q > 0) ? 'Caudal' : !(s.l > 0) ? 'Longitud' : !dOk ? 'Diámetro' : 'Presión de entrada' };
         return;
       }
-      const r = f({ q: s.q, le, d: s.d, pi, G: p.G, patm: p.patm, kv: num(p.kv, K.VELOCIDAD) });
+      const r = f({ q: s.q, le, d: s.d, pi, G: p.G, patm: p.patm, kv: p.kv });
+      if (![r.dp, r.pf, r.v, r.p1Abs, r.p2Abs].every(Number.isFinite)) { rows[i] = { ...base, valid: false, reason: 'Dato fuera de rango' }; return; }
       const ev = evaluate(r, crit, pi);
       rows[i] = { ...base, ...r, valid: true, ...ev, psi: r.pf * K.MBAR_A_PSI, lossAbsPct: r.p1Abs > 0 ? (r.p1Abs - r.p2Abs) / r.p1Abs * 100 : 0 };
     });
     segs.forEach((s, i) => { if (!rows[i]) rows[i] = { index: i, ini: s.iniOrig, fin: s.fin, from: s.ini, q: s.q, qBase: s.qBase, l: s.l, le: 0, d: s.d, mat: s.mat, dn: s.dn, pi: NaN, valid: false, reason: 'Topología' }; });
+
+    // Más de un punto de inicio: cada uno se calcula con la presión de suministro completa. Casi siempre
+    // significa que falta (o se borró) el tramo que conecta ese nodo con el resto de la red.
+    const fins = new Set(segs.filter((s) => s.fin).map((s) => s.fin));
+    const fuentes = [...new Set(segs.filter((s) => s.ini && s.fin && !fins.has(s.ini)).map((s) => s.ini))];
+    if (fuentes.length > 1) warnings.push(`La red tiene ${fuentes.length} puntos de inicio (${fuentes.join(', ')}): cada uno se calcula con la presión de suministro. Si no salen todos del regulador, falta el tramo que llega a ${fuentes.slice(1).join(', ')}.`);
 
     // Balance de caudales (entra − consumos = 0, y en cada tee lo que entra = lo que sale).
     const balance = flowBalance(segs);
@@ -440,12 +464,13 @@
    * que pasa por cada tramo, luego ajuste iterativo aumentando diámetros hasta que toda la red aprueba.
    * Devuelve una copia de los tramos con {dn} actualizado (solo materiales con catálogo).
    */
-  function autoSize(segments, p) {
+  function autoSize(segments, p0) {
+    const p = cleanParams(p0);
     const segs = segments.map((s) => ({ ...s }));
     const sizable = (s) => PIPES[s.mat] && PIPES[s.mat].sizes.length > 0;
     const res0 = calcNetwork(segs, { ...p });
     if (res0.errors.length) return { segments: segs, ok: false, changed: 0 };
-    const fle = num(p.factorLE, 1.2);
+    const fle = p.factorLE;
     // Longitud equivalente máxima de la fuente a cualquier punto final que pasa por cada tramo.
     const norm = segs.map((s) => ({ ini: String(s.ini).toUpperCase(), fin: String(s.fin).toUpperCase(), q: num(s.q), l: num(s.l) }));
     const eff = effectiveStarts(norm);
@@ -466,7 +491,7 @@
       const allowed = path > 0 ? budget * (num(s.l) * fle) / path : budget;
       const sizes = PIPES[s.mat].sizes;
       const choice = sizes.find((sz) => {
-        const r = f({ q: num(s.q) * num(p.demand, 1), le: num(s.l) * fle, d: sz.di, pi: num(p.pi), G: p.G, patm: p.patm, kv: num(p.kv, K.VELOCIDAD) });
+        const r = f({ q: num(s.q) * p.demand, le: num(s.l) * fle, d: sz.di, pi: p.pi, G: p.G, patm: p.patm, kv: p.kv });
         return r.dp <= allowed && r.v <= p.crit.vmax;
       }) || sizes[sizes.length - 1];
       s.dn = choice.dn;
@@ -496,10 +521,14 @@
     return kw / pcs;
   }
 
+  // Catálogos sin prototipo: una clave como "__proto__" o "constructor" en un archivo externo nunca coincide.
+  const sinProto = (o) => Object.freeze(Object.assign(Object.create(null), o));
+  PIPES = sinProto(PIPES); GASES = sinProto(GASES);
+
   const api = {
     K, PIPES, CITIES, GASES, DEFAULT_CRITERIA,
     num, patmFromAltitude, nextNode, nodeIndex, getPipe, segmentDI,
-    LONG_ACCESORIO, tolQ, flowBalance, lowTramo, mediumTramo, mullerTramo, topology, effectiveStarts, calcNetwork, autoSize, flowFromPower
+    LONG_ACCESORIO, tolQ, cleanParams, flowBalance, lowTramo, mediumTramo, mullerTramo, topology, effectiveStarts, calcNetwork, autoSize, flowFromPower
   };
   root.GasEngine = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

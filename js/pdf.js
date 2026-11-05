@@ -207,7 +207,9 @@
     const note = media
       ? `${muller ? 'Müller: P1² - P2² = (Q · S^0.425 · Le^0.576 / (4.61e-5 · D^2.725))^1.74' : 'Renouard cuadrática: P1² - P2² = 48 600 · S · Le · Q^1.82 · D^-4.82'}, con P abs = P + ${fmt(p.patm, 1)} mbar. ${vtxt}. Le = L × ${fmt(p.factorLE, 2)}. Criterios: V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %${crit.pmin > 0 ? ` · P2 >= ${crit.pmin} mbar` : ''}.`
       : `Renouard lineal: dP = 23 200 · S · Le · Q^1.82 · D^-4.82. ${vtxt}, P abs = Pf + ${fmt(p.patm, 1)} mbar. Le = L × ${fmt(p.factorLE, 2)}. Criterios: Pf >= ${crit.pmin} mbar · V <= ${crit.vmax} m/s · pérdida por tramo <= ${crit.maxLossPct} %.`;
-    doc.text(T(note), M, y + 1, { maxWidth: W - 2 * M });
+    const noteLines = doc.splitTextToSize(T(note), W - 2 * M);
+    if (y + 1 + noteLines.length * 3 > H - 14) { doc.addPage(); headerSmall(); y = 24; }
+    doc.text(noteLines, M, y + 1);
     // El balance de caudales solo se muestra en la app (uso interno), no en el PDF.
 
     /* ===== PÁGINA 2: GRÁFICAS + FIRMA ===== */

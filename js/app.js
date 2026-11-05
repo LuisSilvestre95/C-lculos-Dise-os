@@ -530,7 +530,7 @@
       links.push([a, b]);
     });
     const profile = {
-      kind: 'dots', bars: nodes, links, xLabel: 'Nodo', yLabel: 'Presión (mbar)',
+      kind: 'dots', bars: nodes, links, xLabel: 'Nodo', yLabel: 'Presión (mbar)', minSpan: Math.max(1, 0.05 * Math.max(...nodes.map((x) => x.value))),
       refs: p.crit.pmin > 0 ? [{ y: p.crit.pmin, label: `Mínima ${p.crit.pmin} mbar` }] : []
     };
     const vel = {
@@ -701,7 +701,9 @@
         const data = JSON.parse(rd.result);
         const s = data && data.format === 'tgs-project' ? data.state : data;
         if (!s || s.v !== 2 || !s.baja || !s.media) throw new Error('Formato no reconocido');
-        state = normalize(s); persist(); setMode(state.mode); toast('Proyecto cargado', 'ok');
+        const prev = state;
+        try { state = normalize(s); setMode(state.mode); } catch (e) { state = prev; setMode(state.mode); throw new Error('datos dañados'); }
+        persist(); toast('Proyecto cargado', 'ok');
       } catch (e) { toast('No se pudo abrir el archivo: ' + e.message, 'bad', 5000); }
     };
     rd.readAsText(file);
@@ -742,6 +744,10 @@
   fillSelects();
   if (!state.client.city && state.city !== 'custom' && E.CITIES[+state.city]) state.client.city = E.CITIES[+state.city].name;
   bindParams(); bindSegments(); bindExport(); bindChrome();
-  setMode(state.mode);
+  // Si los datos guardados en este equipo estuvieran dañados, la app arranca limpia en vez de quedar trabada.
+  try { setMode(state.mode); } catch (e) {
+    console.error(e); state = DEFAULT_STATE(); persist(); setMode(state.mode);
+    toast('Los datos guardados estaban dañados: se inició un proyecto nuevo', 'bad', 6000);
+  }
   window.TGS = { get state() { return state; }, recalc, compute, reportData };
 })();

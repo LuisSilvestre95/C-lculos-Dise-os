@@ -201,6 +201,35 @@ test('Resta en vivo mientras se escribe: muestra lo que falta por repartir', () 
   close(E.calcNetwork([S('A', 'B', 11, 0.75), S('B', 'C', 1.48, 0.8), S('C', 'D', 9.52, '')], p).summary.balance.diff, 0);
 });
 
+test('Seguridad y datos fuera de rango: nunca un tramo "calculado" con valores vacíos', () => {
+  assert.equal(E.PIPES.__proto__, undefined); assert.equal(E.PIPES.constructor, undefined); assert.equal(E.GASES.toString, undefined);
+  assert.equal(E.getPipe('__proto__', 'x'), null);
+  const raros = { mode: 'x', G: 'abc', patm: -5, factorLE: 0, pi: '23', crit: { pmin: NaN, vmax: 0, maxLossPct: null } };
+  const c = E.cleanParams(raros);
+  assert.deepEqual([c.mode, c.G, c.patm, c.factorLE, c.crit.vmax, c.crit.maxLossPct], ['baja', 0.67, 1013.25, 1.2, 20, 10]);
+  const r = E.calcNetwork([{ ini: 'A', fin: 'B', q: 3, l: 5, mat: 'CUSTOM', di: '1e-9' }, { ini: 'B', fin: '', q: 1, l: 2, mat: 'PEALPE', dn: '1620' }], raros);
+  assert.equal(r.rows[0].reason, 'Diámetro'); assert.equal(r.rows[1].reason, 'Nodo');
+  // Presión agotada: los tramos siguientes quedan rechazados con valores numéricos (no infinitos)
+  const S = (ini, fin, q, l) => ({ ini, fin, q, l, mat: 'PEALPE', dn: '1216' });
+  const x = E.calcNetwork([S('A', 'B', 6, 40), S('B', 'C', 6, 40)], { mode: 'baja', G: 0.67, patm: 830, pi: 23, crit });
+  x.rows.forEach((row) => { assert.ok(row.valid && !row.ok); assert.ok([row.pf, row.v, row.lossPct].every(Number.isFinite)); });
+});
+
+test('Tramo suelto (se borró el que lo conectaba): se avisa que hay dos puntos de inicio', () => {
+  const S = (ini, fin, q, l) => ({ ini, fin, q, l, mat: 'PEALPE', dn: '1620' });
+  const r = E.calcNetwork([S('A', 'B', 2, 3), S('C', 'D', 1, 3)], { mode: 'baja', G: 0.67, patm: 830, pi: 23, crit });
+  assert.ok(r.warnings.some((w) => w.includes('2 puntos de inicio')));
+});
+
+test('Un tramo de 0.05 bien conectado nunca se mueve por coincidencia de caudales', () => {
+  const S = (ini, fin, q, l) => ({ ini, fin, q, l, mat: 'PEALPE', dn: '1620' });
+  const segs = [S('E', 'H', 3.11, 0.05), S('F', 'I', 2.75, 0.05), S('E', 'K', 2.64, 16.58), S('B', 'E', 10.14, 3.23), S('A', 'C', 2.75, 4.12),
+    S('E', 'J', 3, 0.05), S('B', 'D', 3.01, 21.73), S('E', 'G', 1.39, 16.59), S('C', 'F', 2.75, 0.05), S('A', 'B', 13.15, 0.05)];
+  const r = E.calcNetwork(segs, { mode: 'baja', G: 0.67, patm: 830, pi: 23, crit });
+  r.rows.forEach((row) => assert.equal(row.from, row.ini));
+  assert.ok(r.summary.balance.ok);
+});
+
 test('Caudal desde potencia', () => {
   close(E.flowFromPower(10.35, 'kW', 10.35), 1);
   close(E.flowFromPower(100000, 'BTU/h', 10.35), 29.307107 / 10.35);
