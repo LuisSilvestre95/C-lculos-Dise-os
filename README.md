@@ -36,7 +36,8 @@ Hay dos PDF de ejemplo en `docs/` (baja y media presión). Gráficas: presión q
   - la presión atmosférica sale del municipio;
   - altitud, presión atmosférica y densidad solo aparecen cuando hace falta escribirlas (municipio "Personalizado" u "Otro gas").
 - **Tramos de accesorio:** un tramo corto (≤ 0.10 m, de tee a tee) que lleva más caudal que el tramo que llega a su nodo se toma automáticamente desde la tee anterior. Así cuadra el caudal y la presión es la real. En la tabla y en el PDF, la Q y la L de esos tramos salen en azul para identificarlos en la suma manual.
-- **Resta de caudales (solo en pantalla, uso interno):** debajo de la columna Caudal de la tabla de tramos, se actualiza mientras se escribe: entra − consumos = resta (debe dar 0), con el consumo de cada nodo. No sale en el PDF.
+- **Resta de caudales (solo en pantalla, uso interno):** debajo de la columna Caudal, en vivo: entra − consumos de los puntos finales = resta (debe dar 0). Revisa cada tee (lo que entra = lo que sale), dice dónde quedan o faltan m³/h y ofrece corregir el inicio de un tramo mal conectado. Al agregar un tramo, empieza en la tee donde aún queda caudal. No sale en el PDF.
+- **Gráfica de presión por nodo:** una línea por tramo, de la tee a cada punto, siguiendo la red real.
 - **Municipios del Valle de Tenza y oriente de Boyacá** (Garagoa, Guateque, Tenza, Sutatenza, La Capilla, Chinavita, Pachavita, Zetaquira, Berbeo, Páez, Miraflores, Macanal, Santa María, etc.) agrupados primero en el selector; altitud aproximada de la cabecera, ajustable con «Personalizado».
 - **Regulador de baja:** avisa si la presión de suministro supera la salida máxima del regulador (25 mbar por defecto, editable).
 - **Exportación:** los archivos se llaman `Diseno Baja - NOMBRE DEL CLIENTE.pdf` o `Diseno Media - …`, y el PDF lleva el título "DISEÑO".

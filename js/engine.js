@@ -282,23 +282,86 @@
   /* ============================== TRAMOS DE ACCESORIO ============================== */
   /** Longitud máxima de un tramo "entre accesorios" (por ejemplo, de tee a tee). */
   const LONG_ACCESORIO = 0.10;
+  /** Tolerancia de redondeo para comparar caudales: 0.02 m³/h o 1 % (lo que sea mayor). */
+  const tolQ = (q) => Math.max(0.02, Math.abs(q) * 0.01);
   /**
-   * Un tramo corto (≤ 0.10 m) que lleva MÁS caudal que el tramo que llega a su nodo de inicio no puede
-   * alimentarse de ese tramo: es la continuación de la línea principal desde la tee anterior.
-   * Devuelve, para cada tramo, el nodo desde el que realmente toma el gas.
+   * Nodo desde el que realmente toma el gas cada tramo.
+   * Un tramo corto (≤ 0.10 m, entre accesorios) es la continuación de la línea principal: sale de la tee
+   * donde queda justo su caudal. Se recorre la tabla en orden llevando cuánto caudal queda libre en cada
+   * nodo (lo que entra menos lo ya repartido):
+   *   1) si en su propio nodo queda exactamente su caudal, se queda ahí;
+   *   2) si no, se busca aguas arriba la primera tee donde quede exactamente su caudal;
+   *   3) si no hay coincidencia exacta y en su nodo no cabe, sale de la primera tee aguas arriba donde sí cabe.
+   * Los tramos largos nunca se mueven (si no cuadran, el balance lo muestra y se sugiere la corrección).
    */
   function effectiveStarts(segs) {
     const byFin = new Map(); segs.forEach((s, i) => { if (s.fin && !byFin.has(s.fin)) byFin.set(s.fin, i); });
-    return segs.map((s) => {
+    const starts = segs.map((s) => s.ini);
+    const used = new Map();
+    const avail = (n) => { const j = byFin.get(n); return j == null ? Infinity : segs[j].q - (used.get(n) || 0); };
+    const up = (n) => { const j = byFin.get(n); return j == null ? null : starts[j]; };
+    segs.forEach((s, i) => {
       let start = s.ini;
-      if (!(s.l > 0 && s.l <= LONG_ACCESORIO)) return start;
-      for (let k = 0; k < segs.length; k++) {
-        const j = byFin.get(start); if (j == null) break;
-        const inc = segs[j]; if (inc.q + 1e-9 >= s.q) break; // el tramo que llega sí alcanza: no se mueve
-        start = inc.ini;
+      const corto = !(s.l > LONG_ACCESORIO); // ≤ 0.10 m, o longitud aún sin escribir
+      if (corto && s.q > 0 && byFin.has(start)) {
+        const t = tolQ(s.q);
+        if (!(Math.abs(avail(start) - s.q) <= t)) {
+          let exact = null, fit = null;
+          const seen = new Set([start]);
+          for (let n = up(start); n && !seen.has(n) && byFin.has(n); n = up(n)) {
+            seen.add(n);
+            const a = avail(n);
+            if (Math.abs(a - s.q) <= t) { exact = n; break; }
+            if (fit == null && a + t >= s.q) fit = n;
+          }
+          if (exact) start = exact;
+          else if (avail(start) + t < s.q && fit) start = fit;
+        }
       }
-      return start;
+      starts[i] = start;
+      if (s.q > 0) used.set(start, (used.get(start) || 0) + s.q);
     });
+    return starts;
+  }
+
+  /**
+   * Balance de caudales, como se revisa a mano:
+   *   Entra (tramo que sale de la fuente) − Σ consumos (tramos que llegan a un punto final) = Resta → debe dar 0.
+   * Además, en cada nodo intermedio (tee): lo que entra − lo que sale debe dar 0.
+   * Si en un nodo queda caudal sin repartir y un tramo que sale de un nodo vecino lleva justo ese caudal,
+   * se sugiere cambiar su nodo de inicio.
+   */
+  function flowBalance(segs) {
+    const nodes = new Map();
+    const N = (n) => { if (!nodes.has(n)) nodes.set(n, { node: n, entra: 0, sale: 0, fed: false, out: [] }); return nodes.get(n); };
+    segs.forEach((s, i) => {
+      if (!s.ini || !s.fin) return;
+      N(s.fin).fed = true; N(s.ini);
+      if (!(s.qBase > 0)) return;
+      N(s.fin).entra += s.qBase; N(s.ini).sale += s.qBase; N(s.ini).out.push(i);
+    });
+    const list = [...nodes.values()];
+    const qIn = list.filter((n) => !n.fed).reduce((a, n) => a + n.sale, 0);
+    const consumos = list.filter((n) => n.fed && n.entra > 0 && n.sale === 0).map((n) => ({ node: n.node, q: n.entra }));
+    const qCons = consumos.reduce((a, c) => a + c.q, 0);
+    // Nodos intermedios que no cuadran: queda > 0 (sobra caudal) o queda < 0 (falta caudal).
+    const nodos = list.filter((n) => n.fed && n.sale > 0).map((n) => ({ node: n.node, entra: n.entra, sale: n.sale, queda: n.entra - n.sale }));
+    const issues = nodos.filter((n) => Math.abs(n.queda) > tolQ(n.entra));
+    const byFin = new Map(); segs.forEach((s, i) => { if (s.fin && !byFin.has(s.fin)) byFin.set(s.fin, i); });
+    const suggest = [];
+    issues.filter((n) => n.queda > 0).forEach((n) => {
+      // Tramo que sale de un nodo alimentado desde este nodo y que lleva justo lo que sobra aquí.
+      (nodes.get(n.node).out || []).forEach((k) => {
+        const hijo = nodes.get(segs[k].fin); if (!hijo) return;
+        hijo.out.forEach((j) => {
+          if (suggest.some((x) => x.index === j)) return;
+          if (Math.abs(segs[j].qBase - n.queda) <= tolQ(n.queda)) suggest.push({ index: j, ini: segs[j].iniOrig || segs[j].ini, fin: segs[j].fin, to: n.node, q: segs[j].qBase });
+        });
+      });
+    });
+    const diff = qIn - qCons;
+    const ok = qIn > 0 && Math.abs(diff) <= Math.max(0.02, qIn * 0.005) && !issues.length;
+    return { qIn, qCons, diff, consumos, nodos, issues, suggest, ok };
   }
 
   /* ============================== CÁLCULO DE RED ============================== */
@@ -339,21 +402,10 @@
     });
     segs.forEach((s, i) => { if (!rows[i]) rows[i] = { index: i, ini: s.iniOrig, fin: s.fin, from: s.ini, q: s.q, qBase: s.qBase, l: s.l, le: 0, d: s.d, mat: s.mat, dn: s.dn, pi: NaN, valid: false, reason: 'Topología' }; });
 
-    // Balance de caudales: el caudal que sale de un nodo no puede superar el que entra.
-    const outflow = new Map();
-    segs.forEach((s) => outflow.set(s.ini, (outflow.get(s.ini) || 0) + s.qBase));
-    const consumos = [];
-    segs.forEach((s) => {
-      const out = outflow.get(s.fin) || 0;
-      // Tolerancia de redondeo: 0.02 m³/h o 1 % del caudal del tramo (lo que sea mayor).
-      if (out - s.qBase > Math.max(0.02, s.qBase * 0.01)) warnings.push(`Nodo ${s.fin}: sale ${out.toFixed(2)} m³/h pero entran solo ${s.qBase.toFixed(2)} m³/h por el tramo ${s.iniOrig}-${s.fin}.`);
-      const c = s.qBase - out; // consumo en el nodo final del tramo (aparatos conectados ahí)
-      if (c > 1e-6) consumos.push({ node: s.fin, q: c });
-    });
-    // Balance global: caudal que entra a la red = suma de los consumos (la resta debe dar 0).
-    const qIn = segs.filter((s, i) => topo.parentOf[i] === -1 && topo.order.includes(i)).reduce((a, s) => a + s.qBase, 0);
-    const qCons = consumos.reduce((a, c) => a + c.q, 0);
-    const balance = { qIn, qCons, diff: qIn - qCons, consumos, ok: Math.abs(qIn - qCons) <= Math.max(0.02, qIn * 0.005) && !warnings.length };
+    // Balance de caudales (entra − consumos = 0, y en cada tee lo que entra = lo que sale).
+    const balance = flowBalance(segs);
+    // Salir más caudal del que entra es un error; lo que aún queda por repartir se muestra en el cuadro de resta.
+    balance.issues.filter((n) => n.queda < 0).forEach((n) => warnings.push(`Nodo ${n.node}: salen ${n.sale.toFixed(2)} m³/h pero entran solo ${n.entra.toFixed(2)} m³/h (faltan ${(-n.queda).toFixed(2)}).`));
 
     const valid = rows.filter((r) => r.valid);
     // Longitud acumulada desde la fuente y recorrido hasta el punto de menor presión.
@@ -447,7 +499,7 @@
   const api = {
     K, PIPES, CITIES, GASES, DEFAULT_CRITERIA,
     num, patmFromAltitude, nextNode, nodeIndex, getPipe, segmentDI,
-    LONG_ACCESORIO, lowTramo, mediumTramo, mullerTramo, topology, effectiveStarts, calcNetwork, autoSize, flowFromPower
+    LONG_ACCESORIO, tolQ, flowBalance, lowTramo, mediumTramo, mullerTramo, topology, effectiveStarts, calcNetwork, autoSize, flowFromPower
   };
   root.GasEngine = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

@@ -160,17 +160,45 @@ test('Müller y Renouard cuadrática coinciden dentro de un 20 % (validación cr
   }
 });
 
-test('Tramos de accesorio (0.05 m): salen de la tee anterior y el balance da 11 = 11', () => {
+test('Tramos de accesorio (0.05 m): salen de la tee anterior y la resta de caudales da 0', () => {
   const S = (ini, fin, q, l) => ({ ini, fin, q, l, mat: 'PEALPE', dn: '1620' });
-  const r = E.calcNetwork([S('A', 'B', 11, 0.75), S('B', 'C', 1.48, 0.8), S('C', 'D', 9.52, 0.05), S('D', 'E', 2.95, 2),
-    S('E', 'F', 6.57, 0.05), S('F', 'G', 3.97, 3), S('G', 'H', 2.6, 4)], { mode: 'baja', G: 0.67, patm: 830.1, factorLE: 1.2, pi: 25, crit: { pmin: 18, vmax: 20, maxLossPct: 10 } });
+  const p = { mode: 'baja', G: 0.67, patm: 830.1, factorLE: 1.2, pi: 25, crit: { pmin: 18, vmax: 20, maxLossPct: 10 } };
+  // Tal como se escribe en la app (cada tramo empieza donde terminó el anterior): la última tee F reparte 3.97 + 2.60.
+  const seq = [S('A', 'B', 11, 0.75), S('B', 'C', 1.48, 0.8), S('C', 'D', 9.52, 0.05), S('D', 'E', 2.95, 2), S('E', 'F', 6.57, 0.05), S('F', 'G', 3.97, 3), S('G', 'H', 2.6, 4)];
+  const r = E.calcNetwork(seq, p);
   assert.equal(r.rows[2].from, 'B'); assert.equal(r.rows[4].from, 'D');
   close(r.rows[2].pi, r.rows[0].pf); // C-D toma la presión de la tee B, no la del ramal B-C
-  assert.equal(r.warnings.length, 0);
-  close(r.summary.balance.qIn, 11); close(r.summary.balance.qCons, 11); assert.ok(Math.abs(r.summary.balance.diff) < 1e-9); assert.ok(r.summary.balance.ok);
-  // Un tramo largo nunca se mueve, aunque su caudal no cuadre: se avisa
-  const bad = E.calcNetwork([S('A', 'B', 2, 5), S('B', 'C', 5, 3)], { mode: 'baja', G: 0.67, patm: 830, factorLE: 1.2, pi: 23, crit: { pmin: 18, vmax: 20, maxLossPct: 10 } });
+  // G-H escrito desde G deja 2.60 sin repartir en F: la resta lo muestra y sugiere que G-H sale de F.
+  const b = r.summary.balance;
+  close(b.qIn, 11); close(b.qCons, 7.03); close(b.diff, 3.97); assert.equal(b.ok, false);
+  assert.deepEqual(b.issues.map((n) => n.node), ['F', 'G']);
+  assert.deepEqual(b.suggest.map((x) => [x.index, x.to]), [[6, 'F']]);
+  // Aplicada la corrección: 11 − (1.48 + 2.95 + 3.97 + 2.60) = 0
+  const fix = E.calcNetwork(seq.map((s, i) => (i === 6 ? { ...s, ini: 'F' } : s)), p).summary.balance;
+  close(fix.qCons, 11); assert.ok(Math.abs(fix.diff) < 1e-9); assert.ok(fix.ok); assert.equal(fix.issues.length, 0);
+  // La suma de lo que queda en las tees siempre es igual a la resta (todo coincide).
+  close(b.issues.reduce((a, n) => a + n.queda, 0), b.diff);
+  // Un tramo largo nunca se mueve, aunque su caudal no cuadre: se avisa que falta caudal
+  const bad = E.calcNetwork([S('A', 'B', 2, 5), S('B', 'C', 5, 3)], { ...p, pi: 23 });
   assert.equal(bad.rows[1].from, 'B'); assert.equal(bad.warnings.length, 1); assert.equal(bad.summary.balance.ok, false);
+  close(bad.summary.balance.diff, -3);
+});
+
+test('Resta de caudales del proyecto real: 9.97 − 9.97 = 0 (los redondeos de 0.01 no cuentan)', () => {
+  const S = (ini, fin, q, l) => ({ ini, fin, q, l, mat: 'PEALPE', dn: '1620' });
+  const b = E.calcNetwork([S('B', 'C', 9.97, 0.05), S('C', 'D', 3.8, 1.65), S('C', 'E', 6.17, 0.05), S('E', 'F', 2.19, 2.9),
+    S('E', 'G', 3.97, 0.05), S('G', 'H', 2.02, 3.45), S('G', 'I', 1.96, 4.55)], { mode: 'baja', G: 0.67, patm: 830.1, factorLE: 1.2, pi: 23, crit }).summary.balance;
+  close(b.qIn, 9.97); close(b.qCons, 9.97); assert.ok(Math.abs(b.diff) < 1e-9); assert.ok(b.ok);
+  assert.deepEqual(b.consumos.map((c) => c.node), ['D', 'F', 'H', 'I']);
+});
+
+test('Resta en vivo mientras se escribe: muestra lo que falta por repartir', () => {
+  const S = (ini, fin, q, l) => ({ ini, fin, q, l, mat: 'PEALPE', dn: '1620' });
+  const p = { mode: 'baja', G: 0.67, patm: 830.1, factorLE: 1.2, pi: 23, crit };
+  close(E.calcNetwork([S('A', 'B', 11, 0.75)], p).summary.balance.diff, 0);
+  close(E.calcNetwork([S('A', 'B', 11, 0.75), S('B', 'C', 1.48, 0.8)], p).summary.balance.diff, 9.52);
+  // Tramo corto aún sin longitud escrita: ya se reconoce como continuación desde la tee B
+  close(E.calcNetwork([S('A', 'B', 11, 0.75), S('B', 'C', 1.48, 0.8), S('C', 'D', 9.52, '')], p).summary.balance.diff, 0);
 });
 
 test('Caudal desde potencia', () => {

@@ -138,10 +138,15 @@
     } else if (spec.kind === 'dots') {
       // Un punto por nodo (eje X por categorías) con su valor escrito encima: fácil de leer.
       const n = spec.bars.length, slot = (X1 - X0) / n;
-      // Línea que une los puntos en el orden de los nodos
-      ctx.strokeStyle = spec.color || t.s1; ctx.lineWidth = 1.75 * fs; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.beginPath();
-      spec.bars.forEach((b, i) => { const x = X0 + slot * (i + 0.5), yy = sy(b.value); i ? ctx.lineTo(x, yy) : ctx.moveTo(x, yy); });
-      ctx.stroke();
+      // Líneas que unen los puntos: una por tramo (de su nodo de inicio a su nodo final) si se dan los enlaces;
+      // si no, una línea continua en el orden de los nodos.
+      const px = (i) => X0 + slot * (i + 0.5);
+      const links = spec.links || spec.bars.slice(1).map((_, i) => [i, i + 1]);
+      ctx.strokeStyle = spec.color || t.s1; ctx.lineWidth = 1.75 * fs; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      links.forEach(([i, j]) => {
+        const a = spec.bars[i], b = spec.bars[j]; if (!a || !b) return;
+        ctx.beginPath(); ctx.moveTo(px(i), sy(a.value)); ctx.lineTo(px(j), sy(b.value)); ctx.stroke();
+      });
       ctx.textAlign = 'center';
       spec.bars.forEach((b, i) => {
         const cx = X0 + slot * (i + 0.5), y = sy(b.value);
@@ -231,7 +236,7 @@
       if (!this.layout || !this.layout.items.length) return;
       const r = this.canvas.getBoundingClientRect(); const x = e.clientX - r.left;
       let best = null, bd = Infinity;
-      const y = e.clientY - r.top, two = !!this.spec.links;
+      const y = e.clientY - r.top, two = !!this.spec.links && this.spec.kind !== 'dots';
       this.layout.items.forEach((it, i) => { const d = two ? Math.hypot(it.px - x, (it.py - y) * 0.6) : Math.abs(it.px - x); if (d < bd) { bd = d; best = { item: it, index: i }; } });
       if (!best) return;
       this.hover = best; this.render();

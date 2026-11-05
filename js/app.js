@@ -242,8 +242,19 @@
     const nodes = segs.flatMap((s) => [s.ini, s.fin]).filter((n) => /^[A-Z]+$/.test(n));
     const maxNode = nodes.reduce((a, n) => (E.nodeIndex(n) > E.nodeIndex(a) ? n : a), nodes[0] || '');
     const def = state.mode === 'baja' ? { mat: 'PEALPE', dn: '1620' } : { mat: 'PE100', dn: '3/4' };
+    // Inicio: donde terminó el tramo anterior; pero si en la tee de la que sale el tramo anterior aún queda
+    // caudal por repartir, el nuevo tramo sale de esa tee (así la última derivación no queda mal conectada).
+    let ini = last ? last.fin : 'A';
+    if (last) {
+      try {
+        const res = E.calcNetwork(segs, params());
+        const from = res.rows[segs.length - 1] && res.rows[segs.length - 1].from;
+        const n = res.summary.balance.issues.find((x) => x.node === from && x.queda > 0);
+        if (n && E.num(last.q) > 0) ini = from;
+      } catch (e) { /* se usa el final del tramo anterior */ }
+    }
     return {
-      id: newId(), ini: last ? last.fin : 'A', fin: last ? E.nextNode(maxNode) : 'B', q: '', l: '',
+      id: newId(), ini, fin: last ? E.nextNode(maxNode) : 'B', q: '', l: '',
       mat: last ? last.mat : def.mat, dn: last ? last.dn : def.dn, di: last ? last.di : ''
     };
   }
@@ -308,6 +319,13 @@
         renderSegments(); changed(); toast('Tramo duplicado como nuevo ramal desde ' + s.ini, 'ok');
       }
     });
+    // Corrección sugerida por el cuadro de resta: cambia el nodo de inicio del tramo.
+    $('#segFoot').addEventListener('click', (e) => {
+      const b = e.target.closest('.sf-fix'); if (!b) return;
+      const s = M().segs[+b.dataset.i]; if (!s) return;
+      const old = s.ini; s.ini = b.dataset.to;
+      renderSegments(); changed(); toast(`Tramo ${old}-${s.fin} ahora sale de ${s.ini}: ${s.ini}-${s.fin}`, 'ok');
+    });
     $('#addBtn').addEventListener('click', () => {
       if (M().segs.length >= MAX_SEGS) { toast(`Máximo ${MAX_SEGS} tramos por red`, 'bad'); return; }
       M().segs.push(newSegment()); renderSegments(); changed();
@@ -332,13 +350,15 @@
         S('A', 'B', 3.2, 6, 'PEALPE', '2025'),
         S('B', 'C', 2.3, 8.5, 'PEALPE', '1620'),
         S('B', 'D', 0.9, 5, 'PEALPE', '1216'),
-        S('D', 'E', 0.4, 4.2, 'PEALPE', '1216')
+        S('D', 'E', 0.4, 4.2, 'PEALPE', '1216'),
+        S('D', 'F', 0.5, 3.5, 'PEALPE', '1216')
       ];
     }
     return [
       S('A', 'B', 24, 30, 'PE100', '1 1/4'),
       S('B', 'C', 16, 22, 'PE100', '1'),
       S('C', 'D', 8, 35, 'PE100', '3/4'),
+      S('C', 'F', 8, 26, 'PE100', '3/4'),
       S('B', 'E', 8, 18, 'PE100', '3/4')
     ];
   }
@@ -359,7 +379,6 @@
     renderRowChips(res);
     renderNotices(res);
     renderResults(res);
-    renderBalance(res);
     renderSegFoot(res);
     renderCharts(last);
   }
@@ -423,24 +442,29 @@
     }
     return out;
   }
-  function renderBalance(res) {
-    const el = $('#balanceLine'), b = res.summary.balance;
-    if (!b || !res.summary.calculated) { el.hidden = true; return; }
-    el.hidden = false; el.className = 'balance-line ' + (b.ok ? 'ok' : 'bad');
-    const items = b.consumos.map((c) => `${esc(c.node)} ${fmt(c.q, 2)}`).join(' · ');
-    el.innerHTML = `${icon(b.ok ? 'check' : 'alert')}<span>Balance de caudales: entra <b>${fmt(b.qIn, 2)} m³/h</b> = consumos <b>${fmt(b.qCons, 2)} m³/h</b> · diferencia <b>${fmt(Math.abs(b.diff) < 0.005 ? 0 : b.diff, 2)}</b></span><span class="bl-items">Consumo por nodo: ${items || '—'}</span>`;
-  }
-  // Cuadro de resta bajo la columna Caudal: lo que entra a la red menos la suma de consumos, en vivo.
+  /**
+   * Cuadro de resta bajo la columna Caudal (solo en la app): entra − consumos de los puntos finales = resta.
+   * Se actualiza mientras se escribe; muestra en qué tee queda caudal sin repartir o falta caudal.
+   */
   function renderSegFoot(res) {
     const el = $('#segFoot'), b = res.summary.balance;
-    if (!b || !M().segs.length || !(b.qIn > 0)) { el.hidden = true; return; }
-    const d = Math.abs(b.diff) < 0.005 ? 0 : b.diff;
-    const ok = Math.abs(b.diff) <= Math.max(0.02, b.qIn * 0.005);
-    el.hidden = false; el.className = 'seg-foot ' + (ok ? 'ok' : 'bad');
-    const items = b.consumos.map((c) => `<span><b>${esc(c.node)}</b> ${fmt(c.q, 2)}</span>`).join('');
-    el.innerHTML = `<span class="sf-lbl">${icon(ok ? 'check' : 'alert')}Resta de caudales</span>`
-      + `<div class="sf-box"><span>Entra <b>${fmt(b.qIn, 2)}</b></span><span>− Consumos <b>${fmt(b.qCons, 2)}</b></span><strong>= ${fmt(d, 2)}</strong></div>`
-      + `<span class="sf-items">${items ? 'Consumo por nodo: ' + items : 'Aún no hay consumos en los nodos finales.'}${ok ? '' : ' <em>La resta debe dar 0: revise los caudales.</em>'}</span>`;
+    if (!b || !(b.qIn > 0)) { el.hidden = true; el.innerHTML = ''; return; }
+    const z = (v) => (Math.abs(v) < 0.005 ? 0 : v);
+    el.hidden = false; el.className = 'seg-foot ' + (b.ok ? 'ok' : 'bad');
+    const cons = b.consumos.map((c) => `<span class="sf-chip"><b>${esc(c.node)}</b> ${fmt(c.q, 2)}</span>`).join('');
+    const lines = b.issues.map((n) => {
+      const sug = b.suggest.find((x) => x.to === n.node);
+      const txt = n.queda > 0
+        ? `En <b>${esc(n.node)}</b> entran ${fmt(n.entra, 2)} y salen ${fmt(n.sale, 2)}: <b>quedan ${fmt(n.queda, 2)}</b> sin repartir.`
+        : `En <b>${esc(n.node)}</b> entran ${fmt(n.entra, 2)} y salen ${fmt(n.sale, 2)}: <b>faltan ${fmt(-n.queda, 2)}</b>.`;
+      const fix = sug ? ` <button type="button" class="chip-btn sf-fix" data-i="${sug.index}" data-to="${esc(sug.to)}">El tramo ${esc(sug.ini)}-${esc(sug.fin)} (${fmt(sug.q, 2)}) sale de ${esc(sug.to)}: corregir</button>` : '';
+      return `<li>${txt}${fix}</li>`;
+    }).join('');
+    const msg = b.ok ? '<span class="sf-okmsg">Cuadra: todo el caudal que entra llega a los puntos de consumo.</span>'
+      : !b.issues.length ? '<span class="sf-okmsg">La resta debe dar 0: revise los caudales.</span>' : '';
+    el.innerHTML = `<span class="sf-lbl">${icon(b.ok ? 'check' : 'alert')}Resta de caudales</span>`
+      + `<div class="sf-box"><span>Entra <b>${fmt(b.qIn, 2)}</b></span><span>− Consumos <b>${fmt(b.qCons, 2)}</b></span><strong>= ${fmt(z(b.diff), 2)}</strong></div>`
+      + `<div class="sf-items"><span class="sf-cons">Consumos (puntos finales): ${cons || '—'}</span>${lines ? `<ul class="sf-issues">${lines}</ul>` : ''}${msg}</div>`;
   }
   function renderNotices(res) {
     const box = $('#netNotice');
@@ -495,15 +519,18 @@
       const empty = { empty: true, emptyText: 'Agregue tramos con caudal, longitud y diámetro' };
       return { profile: empty, vel: empty };
     }
-    // Presión en cada nodo: la fuente y el final de cada tramo, en el orden de la tabla.
-    const nodes = [];
-    valid.forEach((r) => { if (r.parent < 0 && !nodes.some((x) => x.label === r.from)) nodes.push({ label: r.from, value: r.pi, status: 'ok', tip: `<b>Nodo ${esc(r.from)} (inicio)</b>${fmt(r.pi, 2)} mbar` }); });
-    valid.forEach((r) => nodes.push({
-      label: r.fin, value: r.pf, status: r.pf < p.crit.pmin ? 'bad' : 'ok',
-      tip: `<b>Nodo ${esc(r.fin)}</b>${fmt(r.pf, 2)} mbar al final del tramo ${esc(r.ini)}-${esc(r.fin)}<br>Pérdida en el tramo ${fmt(r.dp, 3)} mbar`
-    }));
+    // Presión en cada nodo, en el orden de la red (fuente y luego cada ramal), con una línea por tramo:
+    // la línea sigue la tubería real, de la tee a cada punto, y siempre baja en el sentido del gas.
+    const nodes = [], at = new Map(), links = [];
+    const add = (label, value, status, tip) => { if (!at.has(label)) { at.set(label, nodes.length); nodes.push({ label, value, status, tip }); } return at.get(label); };
+    res.order.map((i) => res.rows[i]).filter((r) => r && r.valid).forEach((r) => {
+      const a = at.has(r.from) ? at.get(r.from) : add(r.from, r.pi, 'ok', `<b>Nodo ${esc(r.from)} (inicio)</b>${fmt(r.pi, 2)} mbar`);
+      const b = add(r.fin, r.pf, r.pf < p.crit.pmin ? 'bad' : 'ok',
+        `<b>Nodo ${esc(r.fin)}</b>${fmt(r.pf, 2)} mbar al final del tramo ${esc(r.ini)}-${esc(r.fin)}<br>Pérdida en el tramo ${fmt(r.dp, 3)} mbar`);
+      links.push([a, b]);
+    });
     const profile = {
-      kind: 'dots', bars: nodes, xLabel: 'Nodo', yLabel: 'Presión (mbar)',
+      kind: 'dots', bars: nodes, links, xLabel: 'Nodo', yLabel: 'Presión (mbar)',
       refs: p.crit.pmin > 0 ? [{ y: p.crit.pmin, label: `Mínima ${p.crit.pmin} mbar` }] : []
     };
     const vel = {
