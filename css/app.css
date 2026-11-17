@@ -412,3 +412,7 @@ body[data-mode="media"] .only-baja { display: none; }
   .seg-foot .sf-box strong { font-size: 16px; }
   .seg-foot .sf-items { grid-column: 5 / 11; }
 }
+
+/* Botón de texto (Reparar la app) */
+.link-btn { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.link-btn:hover { color: var(--ink); }

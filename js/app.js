@@ -715,6 +715,7 @@
     $('#saveBtn').addEventListener('click', saveProject);
     $('#openFile').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) openProject(f); e.target.value = ''; });
     $('#printBtn').addEventListener('click', () => window.print());
+    if ($('#repairBtn')) $('#repairBtn').addEventListener('click', () => confirmBox('Reparar la app', 'Se descargará de nuevo la aplicación. Sus proyectos y datos guardados NO se borran.', () => { if (window.tgsReparar) window.tgsReparar(); else location.reload(); }, 'Reparar'));
   }
 
   /* ============================== TEMA / PWA ============================== */

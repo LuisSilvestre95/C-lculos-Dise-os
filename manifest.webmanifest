@@ -3,6 +3,7 @@
   "short_name": "TODO GAS",
   "description": "Cálculo y memoria técnica de redes de gas natural y GLP (Renouard).",
   "lang": "es-CO",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

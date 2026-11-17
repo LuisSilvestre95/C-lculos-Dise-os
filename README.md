@@ -52,3 +52,17 @@ node tools/build.mjs        # regenera dist/TODO_GAS_SYR.html y assets/brand.js
 ```
 
 Estructura: `index.html`, `css/app.css`, `js/engine.js` (motor puro, con pruebas), `js/charts.js`, `js/pdf.js`, `js/app.js`, `vendor/` (jsPDF 4.2.1 y jsPDF-AutoTable 5.0.8, licencia MIT), `sw.js` y `manifest.webmanifest` (PWA).
+
+## Instalar en Windows 11 (Edge o Chrome) y actualizar sin desinstalar
+
+1. Abra la dirección de GitHub Pages del proyecto en **Edge** (o Chrome).
+2. Menú **⋯ → Aplicaciones → Instalar este sitio como aplicación** (en Chrome: ícono de instalar en la barra de direcciones).
+3. Queda en el menú Inicio con su ícono; puede anclarla a la barra de tareas.
+
+**Actualizaciones:** son automáticas. Al publicar una versión nueva en GitHub, la app se actualiza sola la próxima vez que se abre con internet. Nunca hay que desinstalarla.
+
+**Si algo falla:** pie de página → **Reparar la app** (o abrir la dirección con `?reparar` al final). Descarga de nuevo la app **sin borrar los proyectos**. Si la app no arranca, aparece sola un aviso con ese botón.
+
+**Sin internet o con internet lento:** la app abre con la copia guardada en máximo unos segundos; si GitHub Pages está caído o da error 404, también abre con la copia guardada.
+
+**Para no dañarla al publicar:** GitHub Pages debe publicar siempre la misma rama (Settings → Pages → Branch). No borre ni cambie de nombre esa rama sin cambiar antes la configuración de Pages.
