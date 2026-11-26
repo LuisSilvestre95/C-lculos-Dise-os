@@ -59,7 +59,7 @@ Estructura: `index.html`, `css/app.css`, `js/engine.js` (motor puro, con pruebas
 2. Menú **⋯ → Aplicaciones → Instalar este sitio como aplicación** (en Chrome: ícono de instalar en la barra de direcciones).
 3. Queda en el menú Inicio con su ícono; puede anclarla a la barra de tareas.
 
-**Actualizaciones:** son automáticas. Al publicar una versión nueva en GitHub, la app se actualiza sola la próxima vez que se abre con internet. Nunca hay que desinstalarla.
+**Actualizaciones:** son automáticas. Al publicar una versión nueva en GitHub, la app se actualiza sola la próxima vez que se abre con internet. Si llega mientras está abierta, no se recarga a mitad del trabajo: guarda todo y muestra el botón «Actualizar». Nunca hay que desinstalarla.
 
 **Si algo falla:** pie de página → **Reparar la app** (o abrir la dirección con `?reparar` al final). Descarga de nuevo la app **sin borrar los proyectos**. Si la app no arranca, aparece sola un aviso con ese botón.
 
@@ -70,3 +70,11 @@ Estructura: `index.html`, `css/app.css`, `js/engine.js` (motor puro, con pruebas
 ## Regla de decimales (TODO GAS SYR)
 
 Todos los valores usan **2 decimales cortados, sin redondear** (2.879 → 2.87): caudal, longitud y diámetro interno que se escriben, el caudal por potencia, la tabla, el resumen, las gráficas, el CSV y el PDF. La pérdida de cada tramo se muestra como Pi − Pf con los mismos números de la tabla, así la resta a mano siempre coincide.
+
+## Trabajo diario
+
+- **Presión de suministro:** escribir más de 100 mbar pasa a media presión y menos de 100 a baja; cada régimen conserva su propia presión.
+- **Agregar tramo:** empieza en la tee donde aún queda caudal y propone un nodo final nuevo que nunca se repite (letras A, B, C… o números 1, 2, 3… si la red usa números).
+- **Caudal por potencia:** propone el primer tramo sin caudal; escriba una vez el PCS del distribuidor y la app lo recuerda.
+- **Línea principal:** el botón «Calcular la línea principal desde las cargas» la deja igual a la suma de las cargas de los gasodomésticos.
+- **Exportar:** si alguna tee no cuadra, la app avisa antes de generar el PDF.

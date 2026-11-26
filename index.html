@@ -267,8 +267,10 @@
       <div class="formula"><b>Velocidad del gas</b><code>V = 354 · Q / (P<sub>abs</sub> · D²)</code><small>V en m/s · P absoluta en bar al final del tramo · D en mm</small></div>
       <div class="formula"><b>Longitud equivalente</b><code>Le = L × factor</code><small>Factor 1.2 = 20 % adicional por accesorios</small></div>
       <div class="formula"><b>Presión atmosférica (ISA)</b><code>P<sub>atm</sub> = 1013.25 · (1 − 2.25577·10⁻⁵ · h)<sup>5.25588</sup></code><small>h = altitud en m s. n. m.</small></div>
-      <div class="formula"><b>Caudal por potencia</b><code>Q = Potencia / PCS</code><small>PCS GN ≈ 10.35 kWh/m³ · GLP ≈ 26 kWh/m³</small></div>
-      <p class="formula-note">Referencias: NTC 2505 (instalaciones para suministro de gas en edificaciones), NTC 3838 (presiones de operación), Resolución 90902 de 2013 (RETIGAS). Los criterios de aceptación se adaptan al uso del documento y a la normativa local.</p>
+      <div class="formula"><b>Caudal por potencia</b><code>Q = Potencia / PCS</code><small>Use el PCS que indique el distribuidor (GN ≈ 10.35–11.83 kWh/m³ · GLP ≈ 26 kWh/m³); la app lo recuerda</small></div>
+      <div class="formula"><b>Resta de caudales</b><code>Entra − Σ cargas = 0</code><small>Cada tramo de la línea principal = suma de las cargas de los gasodomésticos que alimenta</small></div>
+      <div class="formula"><b>Decimales</b><code>2.879 → 2.87</code><small>Siempre 2 decimales, cortados sin redondear; ΔP = Pi − Pf con los valores de la tabla</small></div>
+      <p class="formula-note">Referencias: NTC 2505 (instalaciones para suministro de gas en edificaciones), NTC 3838 (presiones de operación) y Resolución 90902 de 2013 del Ministerio de Minas y Energía (reglamento técnico de instalaciones internas de gas). Los criterios de aceptación (presión mínima, velocidad, pérdida y factor de longitud equivalente) se configuran en «Criterios y ajustes» y deben confirmarse con la norma vigente y el distribuidor.</p>
     </div>
   </details>
 </main>
@@ -279,7 +281,7 @@
     <div>
       <p><b>TODO GAS SYR S.A.S.</b> · NIT 901.126.243-3 · Colombia</p>
       <p>Diseño y cálculos: Luis Silvestre · Ingeniero MP 041122-0809747 BYC — COPNIA</p>
-      <p>Tel. 322 361 8360 · 320 948 5534 · © 2026 · <span class="app-version">Versión 3.12</span> · <button type="button" class="link-btn" id="repairBtn" title="Descarga de nuevo la app sin borrar sus proyectos">Reparar la app</button></p>
+      <p>Tel. 322 361 8360 · 320 948 5534 · © 2026 · <span class="app-version">Versión 3.13</span> · <button type="button" class="link-btn" id="repairBtn" title="Descarga de nuevo la app sin borrar sus proyectos">Reparar la app</button></p>
     </div>
   </div>
 </footer>

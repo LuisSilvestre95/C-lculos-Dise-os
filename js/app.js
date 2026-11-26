@@ -60,11 +60,14 @@
     if (out.city !== 'custom' && !E.CITIES[+out.city]) out.city = 'custom';
     return out;
   }
-  let saveTimer = 0;
+  let saveTimer = 0, pendiente = false;
   function persist() {
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* almacenamiento no disponible */ } }, 250);
+    clearTimeout(saveTimer); pendiente = true;
+    saveTimer = setTimeout(persistNow, 250);
   }
+  function persistNow() { clearTimeout(saveTimer); pendiente = false; try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* sin almacenamiento */ } }
+  // Al cerrar la app se guarda lo último que se escribió (si quedó algo sin guardar).
+  window.addEventListener('pagehide', () => { if (pendiente) persistNow(); });
   const M = () => state[state.mode];
   const params = (extra = {}) => ({
     mode: state.mode, G: E.num(state.G, 0.67), patm: E.num(state.patm, 1013.25), pi: E.num(M().pi), factorLE: E.num(state.factorLE, 1.2),
@@ -180,11 +183,16 @@
     $('#factorLE').addEventListener('input', (e) => { state.factorLE = e.target.value; renderAutoLine(); changed(); });
     [['pi', 'pi'], ['pmin', 'pmin'], ['vmax', 'vmax'], ['maxLoss', 'maxLossPct'], ['pimax', 'pimax']].forEach(([id, key]) => $('#' + id).addEventListener('input', (e) => { M()[key] = e.target.value; changed(); }));
     // Régimen automático: más de 100 mbar es media presión; menos de 100 mbar es baja presión.
+    // La presión del régimen anterior vuelve al valor que tenía antes de escribir (no se queda con el nuevo).
+    let piAntes = null;
+    $('#pi').addEventListener('focus', () => { piAntes = { mode: state.mode, pi: M().pi }; });
     $('#pi').addEventListener('change', (e) => {
       const v = E.num(e.target.value, NaN);
       if (!Number.isFinite(v) || v <= 0) return;
       const want = v > 100 ? 'media' : 'baja';
       if (want === state.mode) return;
+      const old = state.mode;
+      state[old].pi = piAntes && piAntes.mode === old && E.num(piAntes.pi) > 0 && (E.num(piAntes.pi) > 100) === (old === 'media') ? piAntes.pi : E.DEFAULT_CRITERIA[old].pi;
       state[want].pi = e.target.value;
       toast(`${fmt(v, 0)} mbar es ${want === 'media' ? 'media' : 'baja'} presión: se cambió automáticamente`, 'ok', 4500);
       setMode(want);
@@ -243,8 +251,12 @@
   function newSegment() {
     const segs = M().segs;
     const last = segs[segs.length - 1];
-    const nodes = segs.flatMap((s) => [s.ini, s.fin]).filter((n) => /^[A-Z]+$/.test(n));
+    const all = new Set(segs.flatMap((s) => [s.ini, s.fin]).filter(Boolean));
+    const nodes = [...all].filter((n) => /^[A-Z]+$/.test(n)), nums = [...all].filter((n) => /^\d+$/.test(n)).map(Number);
     const maxNode = nodes.reduce((a, n) => (E.nodeIndex(n) > E.nodeIndex(a) ? n : a), nodes[0] || '');
+    // Nodo final nuevo: el siguiente libre (letras: A, B, C…; si la red usa números: 1, 2, 3…).
+    let fin = !last ? 'B' : nums.length && !nodes.length ? String(Math.max(...nums) + 1) : E.nextNode(maxNode);
+    for (let k = 0; all.has(fin) && k < 2000; k++) fin = /^\d+$/.test(fin) ? String(+fin + 1) : E.nextNode(fin);
     const def = state.mode === 'baja' ? { mat: 'PEALPE', dn: '1620' } : { mat: 'PE100', dn: '3/4' };
     // Inicio: donde terminó el tramo anterior; pero si en la tee de la que sale el tramo anterior aún queda
     // caudal por repartir, el nuevo tramo sale de esa tee (así la última derivación no queda mal conectada).
@@ -258,7 +270,7 @@
       } catch (e) { /* se usa el final del tramo anterior */ }
     }
     return {
-      id: newId(), ini, fin: last ? E.nextNode(maxNode) : 'B', q: '', l: '',
+      id: newId(), ini, fin, q: '', l: '',
       mat: last ? last.mat : def.mat, dn: last ? last.dn : def.dn, di: last ? last.di : ''
     };
   }
@@ -411,8 +423,8 @@
     $('#kPf').innerHTML = Number.isFinite(s.pfMin) ? `${fmt(s.pfMin, 2)}<em>mbar</em>` : '—';
     $('#kPfNode').textContent = Number.isFinite(s.pfMin) ? `En el nodo ${s.criticalNode}${c.pmin > 0 ? ` · exigido ≥ ${c.pmin}` : ''}` : 'punto final de la red';
     $('#kPf').parentElement.className = 'kpi ' + (Number.isFinite(s.pfMin) && s.pfMin < c.pmin ? 'bad' : 'ok');
-    $('#kDrop').innerHTML = Number.isFinite(s.totalLoss) ? `${(trunc(s.pi) - trunc(s.pfMin)).toFixed(2)}<em>mbar</em>` : '—';
-    $('#kDropPct').textContent = Number.isFinite(s.totalLossPct) ? `${fmt(s.totalLossPct, 2)} % de la presión de suministro` : '—';
+    $('#kDrop').innerHTML = Number.isFinite(s.totalLoss) ? `${shownDrop(s.pi, s.pfMin)}<em>mbar</em>` : '—';
+    $('#kDropPct').textContent = Number.isFinite(s.totalLossPct) ? `${shownPct(s.pi, s.pfMin)} % de la presión de suministro` : '—';
     $('#kVel').innerHTML = Number.isFinite(s.vMax) ? `${fmt(s.vMax, 2)}<em>m/s</em>` : '—';
     $('#kVelLim').textContent = `Límite ${c.vmax} m/s`;
     $('#kVel').parentElement.className = 'kpi ' + (s.vMax > c.vmax ? 'bad' : 'ok');
@@ -496,6 +508,9 @@
   };
   const matShort = (m) => ({ PEALPE: 'PE-AL-PE', PE100: 'PE100 IPS', PE100M: 'PE100', PE80: 'PE80', ACERO: 'Acero', GALV: 'Galvanizado', COBRE: 'Cobre L', CUSTOM: 'Manual' }[m] || m);
   const dnLabel = (r) => { const p = E.getPipe(r.mat, r.dn); return p ? p.label : r.mat === 'CUSTOM' ? '—' : (r.dn || '—'); };
+  // Pérdida y porcentaje calculados con los mismos números de 2 decimales que se ven en la tabla.
+  const shownDrop = (pi, pf) => (trunc(pi) - trunc(pf)).toFixed(2);
+  const shownPct = (pi, pf) => (trunc(pi) > 0 ? fmt((trunc(pi) - trunc(pf)) / trunc(pi) * 100, 2) : '—');
   function resultRows(res) {
     const c = last.p.crit, media = res.mode === 'media';
     return res.rows.map((r) => {
@@ -506,9 +521,9 @@
       const acc = r.acc ? 'c-acc' : '';
       const common = [[`${r.ini}-${r.fin}`, ''], [fmt(r.q, 2), acc], [fmt(r.l, 2), acc], [fmt(r.le, 2), ''], [matShort(r.mat), ''], [dnLabel(r), ''], [fmt(r.d, 2), '']];
       const mid = media
-        ? [[fmt(r.pi, 2), ''], [fmt(r.p1Abs, 2), ''], [fmt(r.p2Abs, 2), ''], [fmt(r.pf, 2), 'c-' + pT], [fmt(r.psi, 2), ''], [fmt(r.lossPct, 2), 'c-' + lT], [fmt(r.v, 2), 'c-' + vT]]
+        ? [[fmt(r.pi, 2), ''], [fmt(r.p1Abs, 2), ''], [fmt(r.p2Abs, 2), ''], [fmt(r.pf, 2), 'c-' + pT], [fmt(r.psi, 2), ''], [shownPct(r.pi, r.pf), 'c-' + lT], [fmt(r.v, 2), 'c-' + vT]]
         // ΔP = Pi − Pf con los mismos números que se ven: la resta a mano siempre coincide.
-        : [[fmt(r.pi, 2), ''], [(trunc(r.pi) - trunc(r.pf)).toFixed(2), ''], [fmt(r.pf, 2), 'c-' + pT], [fmt(r.lossPct, 2), 'c-' + lT], [fmt(r.v, 2), 'c-' + vT]];
+        : [[fmt(r.pi, 2), ''], [shownDrop(r.pi, r.pf), ''], [fmt(r.pf, 2), 'c-' + pT], [shownPct(r.pi, r.pf), 'c-' + lT], [fmt(r.v, 2), 'c-' + vT]];
       return { r, cells: [...common, ...mid, ['__status__', '']] };
     });
   }
@@ -541,7 +556,7 @@
     res.order.map((i) => res.rows[i]).filter((r) => r && r.valid).forEach((r) => {
       const a = at.has(r.from) ? at.get(r.from) : add(r.from, trunc(r.pi), 'ok', `<b>Nodo ${esc(r.from)} (inicio)</b>${fmt(r.pi, 2)} mbar`);
       const b = add(r.fin, trunc(r.pf), r.pf < p.crit.pmin ? 'bad' : 'ok',
-        `<b>Nodo ${esc(r.fin)}</b>${fmt(r.pf, 2)} mbar al final del tramo ${esc(r.ini)}-${esc(r.fin)}<br>Pérdida en el tramo ${(trunc(r.pi) - trunc(r.pf)).toFixed(2)} mbar`);
+        `<b>Nodo ${esc(r.fin)}</b>${fmt(r.pf, 2)} mbar al final del tramo ${esc(r.ini)}-${esc(r.fin)}<br>Pérdida en el tramo ${shownDrop(r.pi, r.pf)} mbar`);
       links.push([a, b]);
     });
     const profile = {
@@ -621,22 +636,15 @@
     modal({
       title: 'Elegir diámetros automáticamente',
       body: `<p>Método de pérdida unitaria admisible sobre la ruta más larga, con ajuste iterativo hasta cumplir todos los criterios.</p><ul>${list}</ul><p>${out.ok ? '<span class="st ok">' + icon('check') + 'La red quedará APROBADA</span>' : '<span class="st bad">' + icon('x') + 'Aun así no cumple</span>'}</p>${out.ok ? '' : hint || '<p>Revise la presión de suministro o los caudales.</p>'}`,
-      actions: [{ label: 'Cancelar' }, { label: 'Aplicar cambios', primary: true, onClick: () => { const prev = JSON.parse(JSON.stringify(M().segs)); M().segs = out.segments.map((s) => ({ ...s })); M().segs.forEach(ensureDn); renderSegments(); changed(); undoToast(prev); } }]
+      actions: [{ label: 'Cancelar' }, { label: 'Aplicar cambios', primary: true, onClick: () => { const prev = JSON.parse(JSON.stringify(M().segs)); M().segs = out.segments.map((s) => ({ ...s })); M().segs.forEach(ensureDn); renderSegments(); changed(); undoBox(prev, 'Diámetros aplicados'); } }]
     });
   }
-  function undoToast(prev) {
-    toast('Diámetros aplicados. Puede deshacer desde el botón que aparece abajo.', 'ok');
-    const el = document.createElement('div'); el.className = 'toast';
-    el.innerHTML = `${icon('info')}<span>¿Deshacer el dimensionamiento?</span>`;
-    const b = document.createElement('button'); b.className = 'chip-btn'; b.textContent = 'Deshacer'; b.style.marginLeft = 'auto';
-    b.onclick = () => { M().segs = prev; renderSegments(); changed(); el.remove(); toast('Cambios deshechos'); };
-    el.appendChild(b); $('#toasts').appendChild(el); setTimeout(() => el.remove(), 9000);
-  }
-
   function flowCalculator() {
     const gas = E.GASES[state.gas] || E.GASES.GN;
     const pcs0 = (state.pcs && state.pcs[state.gas]) || gas.pcs;
-    const segOpts = M().segs.map((s, i) => `<option value="${i}">Tramo ${i + 1}: ${esc(s.ini)} → ${esc(s.fin)}</option>`).join('');
+    // Se propone el primer tramo que aún no tiene caudal (el que se está llenando); si todos tienen, el último.
+    const libre = M().segs.findIndex((s) => !(E.num(s.q) > 0)); const sel = libre >= 0 ? libre : M().segs.length - 1;
+    const segOpts = M().segs.map((s, i) => `<option value="${i}"${i === sel ? ' selected' : ''}>Tramo ${i + 1}: ${esc(s.ini)} → ${esc(s.fin)}${E.num(s.q) > 0 ? ' (' + esc(s.q) + ' m³/h)' : ''}</option>`).join('');
     modal({
       title: 'Caudal por potencia de gasodomésticos',
       body: `<p>Q = Potencia / PCS. Sume la potencia nominal de los equipos que alimenta el tramo.</p>
@@ -738,13 +746,13 @@
       if (!r.valid) { L.push([...base, `Datos incompletos: ${r.reason}`].map(q).join(';')); return; }
       const tail = [r.ok ? 'APROBADO' : 'RECHAZADO'];
       L.push((media
-        ? [...base, n(r.pi), n(r.p1Abs), n(r.p2Abs), n(r.pf), n(r.psi), n(r.lossPct), n(r.v), ...tail]
-        : [...base, n(r.pi), (trunc(r.pi) - trunc(r.pf)).toFixed(2).replace('.', ','), n(r.pf), n(r.lossPct), n(r.v), ...tail]).map(q).join(';'));
+        ? [...base, n(r.pi), n(r.p1Abs), n(r.p2Abs), n(r.pf), n(r.psi), shownPct(r.pi, r.pf).replace('.', ','), n(r.v), ...tail]
+        : [...base, n(r.pi), shownDrop(r.pi, r.pf).replace('.', ','), n(r.pf), shownPct(r.pi, r.pf).replace('.', ','), n(r.v), ...tail]).map(q).join(';'));
     });
     L.push('');
     const s = d.res.summary;
     L.push(['Resultado global', s.ok ? 'APROBADO' : s.complete ? 'RECHAZADO' : 'INCOMPLETO', 'Presión mínima (mbar)', n(s.pfMin), 'En el nodo', s.criticalNode].map(q).join(';'));
-    L.push(['Velocidad máxima (m/s)', n(s.vMax, 2), 'Caída total (mbar)', Number.isFinite(s.pfMin) ? (trunc(s.pi) - trunc(s.pfMin)).toFixed(2).replace('.', ',') : '', 'Caudal total (m3/h)', n(s.qSource)].map(q).join(';'));
+    L.push(['Velocidad máxima (m/s)', n(s.vMax, 2), 'Caída total (mbar)', Number.isFinite(s.pfMin) ? shownDrop(s.pi, s.pfMin).replace('.', ',') : '', 'Caudal total (m3/h)', n(s.qSource)].map(q).join(';'));
     download(new Blob(['﻿' + L.join('\r\n')], { type: 'text/csv;charset=utf-8' }), fileBase() + '.csv');
     toast('Archivo CSV listo para Excel', 'ok');
   }
@@ -793,10 +801,18 @@
     window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e; $('#installBtn').hidden = false; });
     $('#installBtn').addEventListener('click', async () => { if (!deferred) return; deferred.prompt(); await deferred.userChoice; deferred = null; $('#installBtn').hidden = true; });
     if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !document.documentElement.hasAttribute('data-single-file')) {
-      // Si llega una versión nueva mientras la app está abierta, se recarga una sola vez para mostrarla.
+      // Si llega una versión nueva mientras la app está abierta, NO se recarga sola (se perdería lo que se está
+      // escribiendo): se guarda todo y se ofrece un botón "Actualizar". Si no se pulsa, se usa al abrirla otra vez.
       const hadController = !!navigator.serviceWorker.controller;
-      let reloaded = false;
-      navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloaded) { reloaded = true; location.reload(); } });
+      let avisado = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!hadController || avisado) return; avisado = true; persistNow();
+        const el = document.createElement('div'); el.className = 'toast ok';
+        el.innerHTML = `${icon('check')}<span>Hay una versión nueva de la app.</span>`;
+        const b = document.createElement('button'); b.className = 'chip-btn'; b.textContent = 'Actualizar'; b.style.marginLeft = 'auto';
+        b.onclick = () => { persistNow(); location.reload(); };
+        el.appendChild(b); $('#toasts').appendChild(el);
+      });
       window.addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => reg.update()).catch(() => {}));
     }
   }

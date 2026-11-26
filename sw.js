@@ -3,7 +3,7 @@
      si internet está lento, cortado, o el sitio responde con error (404, 500...), abre la copia guardada.
    - Nunca deja la app en blanco ni muestra la página de error del servidor si hay una copia guardada.
    - La copia guardada se actualiza sola cada vez que hay internet. */
-const CACHE = 'tgs-v3.12.0';
+const CACHE = 'tgs-v3.13.0';
 const ESPERA_MS = 3500; // tiempo máximo esperando a internet antes de abrir la copia guardada
 let lentoHasta = 0;     // si internet acaba de fallar, por 30 s se usa la copia guardada sin esperar
 const SHELL = [
