@@ -697,7 +697,7 @@ body[data-mode="media"] .only-baja { display: none; }
     <div>
       <p><b>TODO GAS SYR S.A.S.</b> · NIT 901.126.243-3 · Colombia</p>
       <p>Diseño y cálculos: Luis Silvestre · Ingeniero MP 041122-0809747 BYC — COPNIA</p>
-      <p>Tel. 322 361 8360 · 320 948 5534 · © 2026 · <span class="app-version">Versión 3.9</span> · <button type="button" class="link-btn" id="repairBtn" title="Descarga de nuevo la app sin borrar sus proyectos">Reparar la app</button></p>
+      <p>Tel. 322 361 8360 · 320 948 5534 · © 2026 · <span class="app-version">Versión 3.10</span> · <button type="button" class="link-btn" id="repairBtn" title="Descarga de nuevo la app sin borrar sus proyectos">Reparar la app</button></p>
     </div>
   </div>
 </footer>
@@ -1174,6 +1174,24 @@ body[data-mode="media"] .only-baja { display: none; }
     return { mode, rows, path, summary, errors: topo.errors, warnings, order: topo.order };
   }
 
+  /**
+   * Caudales de la línea principal calculados desde los consumos: cada tramo que alimenta otros lleva la
+   * suma de lo que sale de su nodo final; los tramos que llegan a un punto de consumo conservan su caudal.
+   * Devuelve el caudal de cada tramo (redondeado a 0.01 m³/h) y la lista de cambios.
+   */
+  function flowsFromConsumption(segments) {
+    const segs = segments.map((s) => ({ ini: String(s.ini || '').trim().toUpperCase(), fin: String(s.fin || '').trim().toUpperCase(), q: num(s.q), l: num(s.l) }));
+    const eff = effectiveStarts(segs);
+    const topo = topology(segs.map((s, i) => ({ ini: eff[i], fin: s.fin })));
+    const kids = segs.map(() => []);
+    topo.parentOf.forEach((par, i) => { if (par >= 0) kids[par].push(i); });
+    const q = segs.map((s) => s.q);
+    [...topo.order].reverse().forEach((i) => { if (kids[i].length) q[i] = kids[i].reduce((a, c) => a + q[c], 0); });
+    const out = q.map((v) => Math.round(v * 100) / 100);
+    const changes = out.map((v, i) => ({ index: i, ini: segs[i].ini, fin: segs[i].fin, from: segs[i].q, to: v })).filter((c) => kids[c.index].length && Math.abs(c.to - c.from) >= 0.005);
+    return { q: out, changes, ok: !topo.errors.length };
+  }
+
   /* ============================== DIMENSIONAMIENTO ============================== */
   /**
    * Dimensionamiento automático: método de pérdida unitaria admisible sobre la ruta más larga
@@ -1244,7 +1262,7 @@ body[data-mode="media"] .only-baja { display: none; }
   const api = {
     K, PIPES, CITIES, GASES, DEFAULT_CRITERIA,
     num, patmFromAltitude, nextNode, nodeIndex, getPipe, segmentDI,
-    LONG_ACCESORIO, tolQ, cleanParams, flowBalance, lowTramo, mediumTramo, mullerTramo, topology, effectiveStarts, calcNetwork, autoSize, flowFromPower
+    LONG_ACCESORIO, tolQ, cleanParams, flowsFromConsumption, flowBalance, lowTramo, mediumTramo, mullerTramo, topology, effectiveStarts, calcNetwork, autoSize, flowFromPower
   };
   root.GasEngine = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
@@ -2125,6 +2143,7 @@ body[data-mode="media"] .only-baja { display: none; }
     });
     // Corrección sugerida por el cuadro de resta: cambia el nodo de inicio del tramo.
     $('#segFoot').addEventListener('click', (e) => {
+      if (e.target.closest('.sf-sum')) { sumFromConsumption(); return; }
       const b = e.target.closest('.sf-fix'); if (!b) return;
       const s = M().segs[+b.dataset.i]; if (!s) return;
       const old = s.ini; s.ini = b.dataset.to;
@@ -2268,7 +2287,9 @@ body[data-mode="media"] .only-baja { display: none; }
       : !b.issues.length ? '<span class="sf-okmsg">La resta debe dar 0: revise los caudales.</span>' : '';
     el.innerHTML = `<span class="sf-lbl">${icon(b.ok ? 'check' : 'alert')}Resta de caudales</span>`
       + `<div class="sf-box"><span>Entra <b>${fmt(b.qIn, 2)}</b></span><span>− Consumos <b>${fmt(b.qCons, 2)}</b></span><strong>= ${fmt(z(b.diff), 2)}</strong></div>`
-      + `<div class="sf-items"><span class="sf-cons">Consumos (puntos finales): ${cons || '—'}</span>${lines ? `<ul class="sf-issues">${lines}</ul>` : ''}${msg}</div>`;
+      + `<div class="sf-items"><span class="sf-cons">Consumos (puntos finales): ${cons || '—'}</span>${lines ? `<ul class="sf-issues">${lines}</ul>` : ''}${msg}`
+      + (b.issues.length && Math.abs(z(b.diff)) < 0.005 ? '<span class="sf-okmsg">La resta total da 0 solo porque las diferencias se compensan: cada tee debe cuadrar.</span>' : '')
+      + (b.issues.length ? ' <button type="button" class="chip-btn sf-fix sf-sum">Calcular la línea principal desde los consumos</button>' : '') + '</div>';
   }
   function renderNotices(res) {
     const box = $('#netNotice');
@@ -2348,6 +2369,50 @@ body[data-mode="media"] .only-baja { display: none; }
     if (!views) views = { profile: new Charts.ChartView($('#chProfile')), vel: new Charts.ChartView($('#chVel')) };
     const sp = chartSpecs(data);
     views.profile.set(sp.profile); views.vel.set(sp.vel);
+  }
+
+  /** Recalcula los caudales de la línea principal como suma de los consumos (con confirmación y lista de cambios). */
+  function sumFromConsumption() {
+    const r = E.flowsFromConsumption(M().segs);
+    if (!r.ok || !r.changes.length) { toast('No hay caudales de la línea principal que cambiar', 'info'); return; }
+    const list = r.changes.map((c) => `<li><b>${esc(c.ini)}-${esc(c.fin)}</b>: ${fmt(c.from, 2)} → <b>${fmt(c.to, 2)}</b> m³/h</li>`).join('');
+    modal({
+      title: 'Calcular la línea principal desde los consumos',
+      body: `<p>Cada tramo que alimenta otros llevará la suma de los consumos que están después de él. Úselo si los caudales de los <b>puntos finales</b> (aparatos) son los correctos; si el error está en un consumo, corríjalo a mano.</p><ul>${list}</ul>`,
+      actions: [{ label: 'Cancelar' }, { label: 'Aplicar', primary: true, onClick: () => {
+        const prev = JSON.parse(JSON.stringify(M().segs));
+        r.changes.forEach((c) => { M().segs[c.index].q = c.to.toFixed(2); });
+        renderSegments(); changed(); undoBox(prev, 'Caudales de la línea principal recalculados');
+      } }]
+    });
+  }
+  function undoBox(prev, msg) {
+    toast(msg, 'ok');
+    const el = document.createElement('div'); el.className = 'toast';
+    el.innerHTML = `${icon('info')}<span>¿Deshacer?</span>`;
+    const b = document.createElement('button'); b.className = 'chip-btn'; b.textContent = 'Deshacer'; b.style.marginLeft = 'auto';
+    b.onclick = () => { M().segs = prev; renderSegments(); changed(); el.remove(); toast('Cambios deshechos'); };
+    el.appendChild(b); $('#toasts').appendChild(el); setTimeout(() => el.remove(), 9000);
+  }
+  /** Antes de exportar: si los caudales no cuadran en alguna tee, avisa (el PDF diría APROBADO con datos inconsistentes). */
+  function balanceGuard() {
+    return new Promise((resolve) => {
+      const b = compute().res.summary.balance;
+      if (!b || !(b.qIn > 0) || b.ok) { resolve(true); return; }
+      const items = b.issues.map((n) => `<li>En <b>${esc(n.node)}</b> entran ${fmt(n.entra, 2)} y salen ${fmt(n.sale, 2)} m³/h (${n.queda > 0 ? 'quedan ' + fmt(n.queda, 2) : 'faltan ' + fmt(-n.queda, 2)}).</li>`).join('')
+        || `<li>Entra ${fmt(b.qIn, 2)} m³/h y los consumos suman ${fmt(b.qCons, 2)} m³/h.</li>`;
+      let done = false; const fin = (v) => { if (!done) { done = true; resolve(v); } };
+      modal({
+        title: 'Los caudales no cuadran',
+        body: `<p>Revise los caudales antes de exportar: el cálculo se haría con datos que no coinciden.</p><ul>${items}</ul>`,
+        actions: [
+          { label: 'Revisar caudales', onClick: () => { fin(false); setTimeout(() => $('#segFoot').scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); } },
+          { label: 'Exportar de todos modos', primary: true, onClick: () => fin(true) }
+        ]
+      });
+      // Cerrar con Escape o tocando fuera cuenta como "revisar".
+      const back = $('#modal'); const obs = new MutationObserver(() => { if (back.hidden) { obs.disconnect(); fin(false); } }); obs.observe(back, { attributes: true, attributeFilter: ['hidden'] });
+    });
   }
 
   function autoSizeAction() {
@@ -2431,6 +2496,7 @@ body[data-mode="media"] .only-baja { display: none; }
   }
   async function buildPDF() {
     if (!M().segs.length) { toast('Agregue al menos un tramo para generar la memoria', 'bad'); return null; }
+    if (!(await balanceGuard())) return null;
     busy(true, 'Generando memoria de cálculo…');
     try {
       await new Promise((r) => setTimeout(r, 30));

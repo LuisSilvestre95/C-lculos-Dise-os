@@ -458,6 +458,24 @@
     return { mode, rows, path, summary, errors: topo.errors, warnings, order: topo.order };
   }
 
+  /**
+   * Caudales de la línea principal calculados desde los consumos: cada tramo que alimenta otros lleva la
+   * suma de lo que sale de su nodo final; los tramos que llegan a un punto de consumo conservan su caudal.
+   * Devuelve el caudal de cada tramo (redondeado a 0.01 m³/h) y la lista de cambios.
+   */
+  function flowsFromConsumption(segments) {
+    const segs = segments.map((s) => ({ ini: String(s.ini || '').trim().toUpperCase(), fin: String(s.fin || '').trim().toUpperCase(), q: num(s.q), l: num(s.l) }));
+    const eff = effectiveStarts(segs);
+    const topo = topology(segs.map((s, i) => ({ ini: eff[i], fin: s.fin })));
+    const kids = segs.map(() => []);
+    topo.parentOf.forEach((par, i) => { if (par >= 0) kids[par].push(i); });
+    const q = segs.map((s) => s.q);
+    [...topo.order].reverse().forEach((i) => { if (kids[i].length) q[i] = kids[i].reduce((a, c) => a + q[c], 0); });
+    const out = q.map((v) => Math.round(v * 100) / 100);
+    const changes = out.map((v, i) => ({ index: i, ini: segs[i].ini, fin: segs[i].fin, from: segs[i].q, to: v })).filter((c) => kids[c.index].length && Math.abs(c.to - c.from) >= 0.005);
+    return { q: out, changes, ok: !topo.errors.length };
+  }
+
   /* ============================== DIMENSIONAMIENTO ============================== */
   /**
    * Dimensionamiento automático: método de pérdida unitaria admisible sobre la ruta más larga
@@ -528,7 +546,7 @@
   const api = {
     K, PIPES, CITIES, GASES, DEFAULT_CRITERIA,
     num, patmFromAltitude, nextNode, nodeIndex, getPipe, segmentDI,
-    LONG_ACCESORIO, tolQ, cleanParams, flowBalance, lowTramo, mediumTramo, mullerTramo, topology, effectiveStarts, calcNetwork, autoSize, flowFromPower
+    LONG_ACCESORIO, tolQ, cleanParams, flowsFromConsumption, flowBalance, lowTramo, mediumTramo, mullerTramo, topology, effectiveStarts, calcNetwork, autoSize, flowFromPower
   };
   root.GasEngine = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

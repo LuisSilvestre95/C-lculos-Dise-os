@@ -106,7 +106,7 @@ test('Catálogo: todos los diámetros internos son menores que los externos', ()
   Object.values(E.PIPES).forEach((m) => m.sizes.forEach((z) => assert.ok(z.di > 0 && z.di < z.de, m.label + ' ' + z.label)));
 });
 
-test('Proyecto real (José Ricardo Mendoza, Garagoa): coincide con la memoria entregada', () => {
+test('Proyecto real de Garagoa (7 tramos): coincide con la memoria entregada', () => {
   const S = (ini, fin, q, l) => ({ ini, fin, q, l, mat: 'PEALPE', dn: '1620' });
   const p = { G: 0.67, patm: 830.1, factorLE: 1.2, crit, mode: 'baja', pi: 23 };
   const res = E.calcNetwork([S('B', 'C', 9.97, 0.05), S('C', 'D', 3.8, 1.65), S('C', 'E', 6.17, 0.05), S('E', 'F', 2.19, 2.9),
@@ -228,6 +228,25 @@ test('Un tramo de 0.05 bien conectado nunca se mueve por coincidencia de caudale
   const r = E.calcNetwork(segs, { mode: 'baja', G: 0.67, patm: 830, pi: 23, crit });
   r.rows.forEach((row) => assert.equal(row.from, row.ini));
   assert.ok(r.summary.balance.ok);
+});
+
+test('Proyecto real de Garagoa (9 tramos, isométrico con 120 kW): se detecta el caudal que no cuadra y se corrige desde los consumos', () => {
+  const S = (ini, fin, q, l) => ({ ini, fin, q, l, mat: 'PEALPE', dn: '1620' });
+  const p = { mode: 'baja', G: 0.67, patm: 830.1, factorLE: 1.2, pi: 23, crit };
+  // Tal como se exportó: C-D 0.21 y I-K 3.04 no coinciden con la línea principal (en C sobran 0.50, en I faltan 0.50)
+  const tal = [S('B', 'C', 10, 0.05), S('C', 'D', 0.21, 2.5), S('C', 'E', 9.29, 0.05), S('E', 'F', 2.53, 2), S('E', 'G', 6.76, 0.05),
+    S('G', 'H', 1.69, 2), S('G', 'I', 5.07, 0.05), S('I', 'J', 2.53, 3.5), S('I', 'K', 3.04, 4.2)];
+  const b = E.calcNetwork(tal, p).summary.balance;
+  assert.equal(b.ok, false); assert.deepEqual(b.issues.map((n) => [n.node, +n.queda.toFixed(2)]), [['C', 0.5], ['I', -0.5]]);
+  // Con las potencias del isométrico (10, 30, 20, 30, 30 kW a 11.86 kWh/m³) y la línea principal calculada desde los consumos
+  const iso = tal.map((s) => ({ ...s, q: s.fin === 'D' ? 0.84 : s.fin === 'K' ? 2.53 : s.q }));
+  const f = E.flowsFromConsumption(iso);
+  assert.deepEqual(f.q, [10.12, 0.84, 9.28, 2.53, 6.75, 1.69, 5.06, 2.53, 2.53]);
+  const r = E.calcNetwork(iso.map((s, i) => ({ ...s, q: f.q[i] })), p);
+  assert.ok(r.summary.ok); assert.ok(r.summary.balance.ok); assert.equal(r.summary.pfMin.toFixed(2), '22.07');
+  // Media presión A-B (14 m, 350 mbar, Müller): igual al PDF entregado
+  const m = E.calcNetwork([S('A', 'B', 10, 14)], { ...p, mode: 'media', method: 'muller', pi: 350, crit: { pmin: 0, vmax: 20, maxLossPct: 10 } }).rows[0];
+  assert.equal(m.pf.toFixed(2), '329.77'); assert.equal(m.v.toFixed(2), '11.92'); assert.equal(m.lossPct.toFixed(2), '5.78');
 });
 
 test('Caudal desde potencia', () => {
