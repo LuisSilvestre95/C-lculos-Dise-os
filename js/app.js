@@ -461,13 +461,13 @@
       const fix = sug ? ` <button type="button" class="chip-btn sf-fix" data-i="${sug.index}" data-to="${esc(sug.to)}">El tramo ${esc(sug.ini)}-${esc(sug.fin)} (${fmt(sug.q, 2)}) sale de ${esc(sug.to)}: corregir</button>` : '';
       return `<li>${txt}${fix}</li>`;
     }).join('');
-    const msg = b.ok ? '<span class="sf-okmsg">Cuadra: todo el caudal que entra llega a los puntos de consumo.</span>'
+    const msg = b.ok ? '<span class="sf-okmsg">Cuadra: el caudal que entra es igual a la suma de las cargas de los gasodomésticos.</span>'
       : !b.issues.length ? '<span class="sf-okmsg">La resta debe dar 0: revise los caudales.</span>' : '';
     el.innerHTML = `<span class="sf-lbl">${icon(b.ok ? 'check' : 'alert')}Resta de caudales</span>`
-      + `<div class="sf-box"><span>Entra <b>${fmt(b.qIn, 2)}</b></span><span>− Consumos <b>${fmt(b.qCons, 2)}</b></span><strong>= ${fmt(z(b.diff), 2)}</strong></div>`
-      + `<div class="sf-items"><span class="sf-cons">Consumos (puntos finales): ${cons || '—'}</span>${lines ? `<ul class="sf-issues">${lines}</ul>` : ''}${msg}`
+      + `<div class="sf-box"><span>Entra <b>${fmt(b.qIn, 2)}</b></span><span>− Cargas <b>${fmt(b.qCons, 2)}</b></span><strong>= ${fmt(z(b.diff), 2)}</strong></div>`
+      + `<div class="sf-items"><span class="sf-cons">Cargas de los gasodomésticos: ${cons || '—'}</span>${lines ? `<ul class="sf-issues">${lines}</ul>` : ''}${msg}`
       + (b.issues.length && Math.abs(z(b.diff)) < 0.005 ? '<span class="sf-okmsg">La resta total da 0 solo porque las diferencias se compensan: cada tee debe cuadrar.</span>' : '')
-      + (b.issues.length ? ' <button type="button" class="chip-btn sf-fix sf-sum">Calcular la línea principal desde los consumos</button>' : '') + '</div>';
+      + (b.issues.length ? ' <button type="button" class="chip-btn sf-fix sf-sum">Calcular la línea principal desde las cargas</button>' : '') + '</div>';
   }
   function renderNotices(res) {
     const box = $('#netNotice');
@@ -555,12 +555,12 @@
     if (!r.ok || !r.changes.length) { toast('No hay caudales de la línea principal que cambiar', 'info'); return; }
     const list = r.changes.map((c) => `<li><b>${esc(c.ini)}-${esc(c.fin)}</b>: ${fmt(c.from, 2)} → <b>${fmt(c.to, 2)}</b> m³/h</li>`).join('');
     modal({
-      title: 'Calcular la línea principal desde los consumos',
-      body: `<p>Cada tramo que alimenta otros llevará la suma de los consumos que están después de él. Úselo si los caudales de los <b>puntos finales</b> (aparatos) son los correctos; si el error está en un consumo, corríjalo a mano.</p><ul>${list}</ul>`,
+      title: 'Calcular la línea principal desde las cargas',
+      body: `<p>Cada tramo de la línea principal llevará la suma de las cargas de los gasodomésticos que alimenta. Úselo cuando las <b>cargas</b> (estufa, calentador, horno…) estén bien escritas; si el error está en una carga, corríjala a mano.</p><ul>${list}</ul>`,
       actions: [{ label: 'Cancelar' }, { label: 'Aplicar', primary: true, onClick: () => {
         const prev = JSON.parse(JSON.stringify(M().segs));
         r.changes.forEach((c) => { M().segs[c.index].q = c.to.toFixed(2); });
-        renderSegments(); changed(); undoBox(prev, 'Caudales de la línea principal recalculados');
+        renderSegments(); changed(); undoBox(prev, 'Línea principal calculada desde las cargas');
       } }]
     });
   }
@@ -578,7 +578,7 @@
       const b = compute().res.summary.balance;
       if (!b || !(b.qIn > 0) || b.ok) { resolve(true); return; }
       const items = b.issues.map((n) => `<li>En <b>${esc(n.node)}</b> entran ${fmt(n.entra, 2)} y salen ${fmt(n.sale, 2)} m³/h (${n.queda > 0 ? 'quedan ' + fmt(n.queda, 2) : 'faltan ' + fmt(-n.queda, 2)}).</li>`).join('')
-        || `<li>Entra ${fmt(b.qIn, 2)} m³/h y los consumos suman ${fmt(b.qCons, 2)} m³/h.</li>`;
+        || `<li>Entra ${fmt(b.qIn, 2)} m³/h y las cargas de los gasodomésticos suman ${fmt(b.qCons, 2)} m³/h.</li>`;
       let done = false; const fin = (v) => { if (!done) { done = true; resolve(v); } };
       modal({
         title: 'Los caudales no cuadran',
