@@ -31,7 +31,8 @@
   /* ---------- Utilidades ---------- */
   const MAP = { 'Δ': 'Delta ', '≤': '<=', '≥': '>=', '√': 'raiz', '–': '-', '—': '-', '✓': '', '→': '->', '₁': '1', '₂': '2', '…': '...', '−': '-', '⁻': '-', '⁷': '7', '⁵': '5', '¹': '1', '·': '·', '“': '"', '”': '"', '‘': "'", '’': "'" };
   const T = (s) => String(s ?? '').replace(/[^\x00-\xFF]/g, (c) => (c in MAP ? MAP[c] : '')).trim();
-  const fmt = (v, d = 2) => (Number.isFinite(v) ? v.toFixed(d) : '-');
+  // Mismo criterio que la app: los valores se cortan (no se redondean): 2.879 → 2.87.
+  const fmt = (v, d = 2) => { if (!Number.isFinite(v)) return '-'; const f = Math.pow(10, d); return (Math.trunc(v * f + (v >= 0 ? 1e-7 : -1e-7)) / f).toFixed(d); };
   const hex = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
   const mix = (a, b, t) => a.map((x, i) => Math.round(x + (b[i] - x) * t));
 
@@ -151,10 +152,10 @@
     kv(M + 3, y + 11.5, [['Nombre', d.client.name], ['Cédula / NIT', d.client.id], ['Dirección', d.client.address], ['Municipio', d.client.city], ['Teléfono', d.client.phone]], 22, wA - 5);
     card(M + wA + gap, y, wB, hC, 'Parámetros de diseño', media ? C.navy : C.cyan);
     kv(M + wA + gap + 3, y + 11.5, [
-      ['Gas', `${p.gasLabel} · S = ${fmt(p.G, 3)}`],
+      ['Gas', `${p.gasLabel} · S = ${fmt(p.G, 2)}`],
       ['Ubicación', `${p.city}${Number.isFinite(p.altitude) ? ` · ${fmt(p.altitude, 0)} m` : ''}`],
       ['P. atmosférica', `${fmt(p.patm, 1)} mbar`],
-      ['P. suministro', `${fmt(p.pi, 2)} mbar (${fmt(p.pi * 0.0145038, 3)} psi)`],
+      ['P. suministro', `${fmt(p.pi, 2)} mbar (${fmt(p.pi * 0.0145038, 2)} psi)`],
       ['Criterios', `${crit.pmin > 0 ? `Pmin ${crit.pmin} mbar · ` : ''}Vmax ${crit.vmax} m/s · dP <= ${crit.maxLossPct} %`]
     ], 24, wB - 5);
     // Resultado global

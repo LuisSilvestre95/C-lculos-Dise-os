@@ -200,7 +200,7 @@
         ctx.globalAlpha = hover && hover.index !== i ? 0.55 : 1;
         ctx.fillStyle = col; roundRectTop(ctx, cx - bw / 2, y, bw, Y1 - y, 4 * fs); ctx.fill(); ctx.globalAlpha = 1;
         if (i % step === 0) { ctx.fillStyle = t.ink2; ctx.fillText(b.label, cx, Y1 + 7 * fs); }
-        if (spec.valueLabels && n <= 16) { ctx.fillStyle = t.ink; ctx.font = F(n > 12 ? 8.5 : 9.5, 700); ctx.textBaseline = 'bottom'; ctx.fillText(b.value.toFixed(1), cx, y - 3 * fs); ctx.textBaseline = 'top'; ctx.font = lblFont; }
+        if (spec.valueLabels && n <= 16) { ctx.fillStyle = t.ink; ctx.font = F(n > 12 ? 8.5 : 9.5, 700); ctx.textBaseline = 'bottom'; ctx.fillText(b.value.toFixed(2), cx, y - 3 * fs); ctx.textBaseline = 'top'; ctx.font = lblFont; }
         layout.items.push({ px: cx, py: y, w: slot, ...b });
       });
       if (spec.xLabel) { ctx.fillStyle = t.ink2; ctx.font = F(10, 600); ctx.fillText(spec.xLabel, (X0 + X1) / 2, Y1 + 20 * fs); }

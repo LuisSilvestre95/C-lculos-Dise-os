@@ -7,7 +7,11 @@
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const fmt = (v, d = 2) => (Number.isFinite(v) ? v.toFixed(d) : '—');
+  // Regla de TODO GAS SYR: los valores se cortan (no se redondean) a los decimales indicados: 2.879 → 2.87.
+  const trunc = (v, d = 2) => { const f = Math.pow(10, d); return Math.trunc(v * f + (v >= 0 ? 1e-7 : -1e-7)) / f; };
+  const fmt = (v, d = 2) => (Number.isFinite(v) ? trunc(v, d).toFixed(d) : '—');
+  /** Texto escrito con más de 2 decimales → cortado a 2 ('2,879' → '2.87'); si no, se deja igual. */
+  const cut2 = (txt) => { const t = String(txt ?? '').trim().replace(',', '.'); const v = parseFloat(t); return /^-?\d*\.\d{3,}$/.test(t) && Number.isFinite(v) ? trunc(v, 2).toFixed(2) : String(txt ?? ''); };
   const icon = (id) => `<svg><use href="#i-${id}"/></svg>`;
   const STORE = 'tgs-state-v2';
 
@@ -48,7 +52,7 @@
       ['pi', 'pmin', 'vmax', 'maxLossPct', 'pimax'].forEach((k) => { if (src[k] != null) out[m][k] = str(src[k], 20); });
       out[m].segs = (Array.isArray(src.segs) ? src.segs.slice(0, MAX_SEGS) : []).filter((g) => g && typeof g === 'object').map((g) => ({
         id: newId(), ini: str(g.ini || 'A', 4).toUpperCase().replace(/[^A-Z0-9]/g, ''), fin: str(g.fin || 'B', 4).toUpperCase().replace(/[^A-Z0-9]/g, ''),
-        q: str(g.q, 20), l: str(g.l, 20), mat: E.PIPES[g.mat] ? g.mat : 'PEALPE', dn: str(g.dn, 12), di: str(g.di, 20)
+        q: cut2(str(g.q, 20)), l: cut2(str(g.l, 20)), mat: E.PIPES[g.mat] ? g.mat : 'PEALPE', dn: str(g.dn, 12), di: cut2(str(g.di, 20))
       }));
     });
     out.mode = out.mode === 'media' ? 'media' : 'baja';
@@ -281,6 +285,13 @@
       changed();
     });
     body.addEventListener('focusout', (e) => { if (e.target.dataset && e.target.dataset.f === 'fin') e.target._kids = null; });
+    // Siempre 2 decimales: al salir del campo, 2.879 queda 2.87 (se corta, no se redondea).
+    body.addEventListener('change', (e) => {
+      const el = e.target, f = el.dataset && el.dataset.f; if (!['q', 'l', 'di'].includes(f)) return;
+      const row = el.closest('.seg-row'); const s = row && M().segs[+row.dataset.i]; if (!s) return;
+      const v = cut2(el.value); if (v === el.value) return;
+      toast(`${el.value} → ${v} (2 decimales)`, 'info', 2200); el.value = v; s[f] = v; changed();
+    });
     body.addEventListener('change', (e) => {
       const el = e.target, row = el.closest('.seg-row'); if (!row) return;
       const i = +row.dataset.i, s = M().segs[i];
@@ -400,8 +411,8 @@
     $('#kPf').innerHTML = Number.isFinite(s.pfMin) ? `${fmt(s.pfMin, 2)}<em>mbar</em>` : '—';
     $('#kPfNode').textContent = Number.isFinite(s.pfMin) ? `En el nodo ${s.criticalNode}${c.pmin > 0 ? ` · exigido ≥ ${c.pmin}` : ''}` : 'punto final de la red';
     $('#kPf').parentElement.className = 'kpi ' + (Number.isFinite(s.pfMin) && s.pfMin < c.pmin ? 'bad' : 'ok');
-    $('#kDrop').innerHTML = Number.isFinite(s.totalLoss) ? `${fmt(s.totalLoss, 2)}<em>mbar</em>` : '—';
-    $('#kDropPct').textContent = Number.isFinite(s.totalLossPct) ? `${fmt(s.totalLossPct, 1)} % de la presión de suministro` : '—';
+    $('#kDrop').innerHTML = Number.isFinite(s.totalLoss) ? `${(trunc(s.pi) - trunc(s.pfMin)).toFixed(2)}<em>mbar</em>` : '—';
+    $('#kDropPct').textContent = Number.isFinite(s.totalLossPct) ? `${fmt(s.totalLossPct, 2)} % de la presión de suministro` : '—';
     $('#kVel').innerHTML = Number.isFinite(s.vMax) ? `${fmt(s.vMax, 2)}<em>m/s</em>` : '—';
     $('#kVelLim').textContent = `Límite ${c.vmax} m/s`;
     $('#kVel').parentElement.className = 'kpi ' + (s.vMax > c.vmax ? 'bad' : 'ok');
@@ -493,10 +504,11 @@
       const pT = r.pf < c.pmin || r.pf <= 0 ? 'bad' : 'ok';
       // Tramos entre accesorios (≤ 0.10 m): Q y L en otro color, porque no se suman en el balance.
       const acc = r.acc ? 'c-acc' : '';
-      const common = [[`${r.ini}-${r.fin}`, ''], [fmt(r.q, 2), acc], [fmt(r.l, 2), acc], [fmt(r.le, 2), ''], [matShort(r.mat), ''], [dnLabel(r), ''], [fmt(r.d, 1), '']];
+      const common = [[`${r.ini}-${r.fin}`, ''], [fmt(r.q, 2), acc], [fmt(r.l, 2), acc], [fmt(r.le, 2), ''], [matShort(r.mat), ''], [dnLabel(r), ''], [fmt(r.d, 2), '']];
       const mid = media
-        ? [[fmt(r.pi, 2), ''], [fmt(r.p1Abs, 1), ''], [fmt(r.p2Abs, 1), ''], [fmt(r.pf, 2), 'c-' + pT], [fmt(r.psi, 3), ''], [fmt(r.lossPct, 2), 'c-' + lT], [fmt(r.v, 2), 'c-' + vT]]
-        : [[fmt(r.pi, 3), ''], [fmt(r.dp, 3), ''], [fmt(r.pf, 3), 'c-' + pT], [fmt(r.lossPct, 2), 'c-' + lT], [fmt(r.v, 2), 'c-' + vT]];
+        ? [[fmt(r.pi, 2), ''], [fmt(r.p1Abs, 2), ''], [fmt(r.p2Abs, 2), ''], [fmt(r.pf, 2), 'c-' + pT], [fmt(r.psi, 2), ''], [fmt(r.lossPct, 2), 'c-' + lT], [fmt(r.v, 2), 'c-' + vT]]
+        // ΔP = Pi − Pf con los mismos números que se ven: la resta a mano siempre coincide.
+        : [[fmt(r.pi, 2), ''], [(trunc(r.pi) - trunc(r.pf)).toFixed(2), ''], [fmt(r.pf, 2), 'c-' + pT], [fmt(r.lossPct, 2), 'c-' + lT], [fmt(r.v, 2), 'c-' + vT]];
       return { r, cells: [...common, ...mid, ['__status__', '']] };
     });
   }
@@ -527,9 +539,9 @@
     const nodes = [], at = new Map(), links = [];
     const add = (label, value, status, tip) => { if (!at.has(label)) { at.set(label, nodes.length); nodes.push({ label, value, status, tip }); } return at.get(label); };
     res.order.map((i) => res.rows[i]).filter((r) => r && r.valid).forEach((r) => {
-      const a = at.has(r.from) ? at.get(r.from) : add(r.from, r.pi, 'ok', `<b>Nodo ${esc(r.from)} (inicio)</b>${fmt(r.pi, 2)} mbar`);
-      const b = add(r.fin, r.pf, r.pf < p.crit.pmin ? 'bad' : 'ok',
-        `<b>Nodo ${esc(r.fin)}</b>${fmt(r.pf, 2)} mbar al final del tramo ${esc(r.ini)}-${esc(r.fin)}<br>Pérdida en el tramo ${fmt(r.dp, 3)} mbar`);
+      const a = at.has(r.from) ? at.get(r.from) : add(r.from, trunc(r.pi), 'ok', `<b>Nodo ${esc(r.from)} (inicio)</b>${fmt(r.pi, 2)} mbar`);
+      const b = add(r.fin, trunc(r.pf), r.pf < p.crit.pmin ? 'bad' : 'ok',
+        `<b>Nodo ${esc(r.fin)}</b>${fmt(r.pf, 2)} mbar al final del tramo ${esc(r.ini)}-${esc(r.fin)}<br>Pérdida en el tramo ${(trunc(r.pi) - trunc(r.pf)).toFixed(2)} mbar`);
       links.push([a, b]);
     });
     const profile = {
@@ -538,7 +550,7 @@
     };
     const vel = {
       kind: 'bars', yLabel: 'Velocidad (m/s)', valueLabels: true,
-      bars: valid.map((r) => ({ label: `${r.ini}-${r.fin}`, value: r.v, status: tone(usage(r.v, p.crit.vmax)), tip: `<b>Tramo ${esc(r.ini)}-${esc(r.fin)}</b>V = ${fmt(r.v, 2)} m/s<br>Q ${fmt(r.q, 2)} m³/h · D ${fmt(r.d, 1)} mm` })),
+      bars: valid.map((r) => ({ label: `${r.ini}-${r.fin}`, value: trunc(r.v), status: tone(usage(r.v, p.crit.vmax)), tip: `<b>Tramo ${esc(r.ini)}-${esc(r.fin)}</b>V = ${fmt(r.v, 2)} m/s<br>Q ${fmt(r.q, 2)} m³/h · D ${fmt(r.d, 2)} mm` })),
       refs: [{ y: p.crit.vmax, label: `Límite ${p.crit.vmax} m/s` }]
     };
     return { profile, vel };
@@ -638,12 +650,12 @@
           const q = calcQ(); const i = $('#fcT').value;
           if (!(q > 0) || i === '') { toast('Ingrese una potencia válida y un tramo', 'bad'); return false; }
           const pcsUsed = E.num($('#fcS').value, gas.pcs); state.pcs = { ...(state.pcs || {}), [state.gas]: pcsUsed };
-          M().segs[+i].q = q.toFixed(3); renderSegments(); changed(); toast(`Q = ${q.toFixed(3)} m³/h asignado`, 'ok');
+          M().segs[+i].q = fmt(q, 2); renderSegments(); changed(); toast(`Q = ${fmt(q, 2)} m³/h asignado`, 'ok');
         }
       }]
     });
     const calcQ = () => E.flowFromPower(E.num($('#fcP').value), $('#fcU').value, E.num($('#fcS').value, pcs0));
-    const upd = () => { const q = calcQ(); $('#fcR').textContent = q > 0 ? `${q.toFixed(3)} m³/h` : '— m³/h'; };
+    const upd = () => { const q = calcQ(); $('#fcR').textContent = q > 0 ? `${fmt(q, 2)} m³/h` : '— m³/h'; };
     ['#fcP', '#fcU', '#fcS'].forEach((s) => $(s).addEventListener('input', upd));
   }
 
@@ -701,7 +713,7 @@
   function exportCSV() {
     const d = reportData();
     if (!d.res.rows.length) { toast('No hay resultados para exportar', 'bad'); return; }
-    const n = (v, k = 3) => (Number.isFinite(v) ? v.toFixed(k).replace('.', ',') : '');
+    const n = (v, k = 2) => (Number.isFinite(v) ? trunc(v, k).toFixed(k).replace('.', ',') : '');
     // Texto que empieza con = + - @ se antepone con ' para que Excel no lo ejecute como fórmula.
     const q = (v) => { let t = String(v ?? ''); if (/^[=+\-@\t\r]/.test(t) && !/^-?\d+(,\d+)?$/.test(t)) t = "'" + t; return `"${t.replace(/"/g, '""')}"`; };
     const L = [];
@@ -710,7 +722,7 @@
     L.push(['Cliente', d.client.name, 'Cédula/NIT', d.client.id].map(q).join(';'));
     L.push(['Dirección', d.client.address, 'Municipio', d.client.city].map(q).join(';'));
     L.push(['Fecha', d.date, 'Informe', (d.client.ref || '').trim() || d.client.name].map(q).join(';'));
-    L.push(['Gas', d.params.gasLabel, 'Densidad relativa', n(d.params.G, 3)].map(q).join(';'));
+    L.push(['Gas', d.params.gasLabel, 'Densidad relativa', n(d.params.G, 2)].map(q).join(';'));
     L.push(['Presión atmosférica (mbar)', n(d.params.patm, 1), 'Presión de suministro (mbar)', n(d.params.pi, 2)].map(q).join(';'));
     L.push(['Factor Le', n(d.params.factorLE, 2), 'Criterios', `Pmin ${d.params.crit.pmin} mbar; Vmax ${d.params.crit.vmax} m/s; Pérdida máx ${d.params.crit.maxLossPct} %`].map(q).join(';'));
     L.push('');
@@ -722,17 +734,17 @@
     d.table.rows.forEach(({ r }, i) => {
       const mat = (E.PIPES[r.mat] || {}).label || r.mat;
       const dn = (E.getPipe(r.mat, r.dn) || {}).label || '';
-      const base = [i + 1, r.ini, r.fin, n(r.q, 3), n(r.l, 2), n(r.le, 2), mat, dn, n(r.d, 1)];
+      const base = [i + 1, r.ini, r.fin, n(r.q), n(r.l), n(r.le), mat, dn, n(r.d)];
       if (!r.valid) { L.push([...base, `Datos incompletos: ${r.reason}`].map(q).join(';')); return; }
       const tail = [r.ok ? 'APROBADO' : 'RECHAZADO'];
       L.push((media
-        ? [...base, n(r.pi, 2), n(r.p1Abs, 1), n(r.p2Abs, 1), n(r.pf, 2), n(r.psi, 3), n(r.lossPct, 2), n(r.v, 2), ...tail]
-        : [...base, n(r.pi, 3), n(r.dp, 3), n(r.pf, 3), n(r.lossPct, 2), n(r.v, 2), ...tail]).map(q).join(';'));
+        ? [...base, n(r.pi), n(r.p1Abs), n(r.p2Abs), n(r.pf), n(r.psi), n(r.lossPct), n(r.v), ...tail]
+        : [...base, n(r.pi), (trunc(r.pi) - trunc(r.pf)).toFixed(2).replace('.', ','), n(r.pf), n(r.lossPct), n(r.v), ...tail]).map(q).join(';'));
     });
     L.push('');
     const s = d.res.summary;
-    L.push(['Resultado global', s.ok ? 'APROBADO' : s.complete ? 'RECHAZADO' : 'INCOMPLETO', 'Presión mínima (mbar)', n(s.pfMin, 3), 'En el nodo', s.criticalNode].map(q).join(';'));
-    L.push(['Velocidad máxima (m/s)', n(s.vMax, 2), 'Caída total (mbar)', n(s.totalLoss, 3), 'Caudal total (m3/h)', n(s.qSource, 3)].map(q).join(';'));
+    L.push(['Resultado global', s.ok ? 'APROBADO' : s.complete ? 'RECHAZADO' : 'INCOMPLETO', 'Presión mínima (mbar)', n(s.pfMin), 'En el nodo', s.criticalNode].map(q).join(';'));
+    L.push(['Velocidad máxima (m/s)', n(s.vMax, 2), 'Caída total (mbar)', Number.isFinite(s.pfMin) ? (trunc(s.pi) - trunc(s.pfMin)).toFixed(2).replace('.', ',') : '', 'Caudal total (m3/h)', n(s.qSource)].map(q).join(';'));
     download(new Blob(['﻿' + L.join('\r\n')], { type: 'text/csv;charset=utf-8' }), fileBase() + '.csv');
     toast('Archivo CSV listo para Excel', 'ok');
   }

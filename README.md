@@ -66,3 +66,7 @@ Estructura: `index.html`, `css/app.css`, `js/engine.js` (motor puro, con pruebas
 **Sin internet o con internet lento:** la app abre con la copia guardada en máximo unos segundos; si GitHub Pages está caído o da error 404, también abre con la copia guardada.
 
 **Para no dañarla al publicar:** GitHub Pages debe publicar siempre la misma rama (Settings → Pages → Branch). No borre ni cambie de nombre esa rama sin cambiar antes la configuración de Pages.
+
+## Regla de decimales (TODO GAS SYR)
+
+Todos los valores usan **2 decimales cortados, sin redondear** (2.879 → 2.87): caudal, longitud y diámetro interno que se escriben, el caudal por potencia, la tabla, el resumen, las gráficas, el CSV y el PDF. La pérdida de cada tramo se muestra como Pi − Pf con los mismos números de la tabla, así la resta a mano siempre coincide.
