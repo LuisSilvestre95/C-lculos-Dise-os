@@ -241,10 +241,10 @@
       canvas.addEventListener('pointerleave', () => this.clearHover());
     }
     set(spec) { this.spec = spec; this.hover = null; this.tip.hidden = true; this.render(); }
-    render() {
+    render(dprForzado) {
       const r = this.box.getBoundingClientRect();
       if (!r.width || !r.height) return;
-      const dpr = Math.min(window.devicePixelRatio || 1, 3);
+      const dpr = dprForzado || Math.min(window.devicePixelRatio || 1, 3);
       const W = Math.round(r.width * dpr), H = Math.round(r.height * dpr);
       if (this.canvas.width !== W || this.canvas.height !== H) { this.canvas.width = W; this.canvas.height = H; }
       const ctx = this.canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);

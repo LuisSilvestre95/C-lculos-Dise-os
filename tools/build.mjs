@@ -29,6 +29,8 @@ const flame = b64('assets/flame.png');
 html = html.replaceAll('src="assets/flame.png"', `src="${flame}"`);
 const flameSvg = 'data:image/svg+xml;base64,' + readFileSync(join(ROOT, 'assets/flame.svg')).toString('base64');
 html = html.replaceAll('src="assets/flame.svg"', `src="${flameSvg}"`);
+html = html.replaceAll('src="assets/logo.png"', `src="${b64('assets/logo.png')}"`);
+html = html.replaceAll('src="assets/firma.png"', `src="${b64('assets/firma.png')}"`);
 for (const f of ['engine', 'charts', 'pdf', 'app']) {
   html = html.replace(`<script src="js/${f}.js"></script>`, () => `<script>\n${safe(read(`js/${f}.js`))}\n</script>`);
 }

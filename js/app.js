@@ -13,6 +13,36 @@
   /** Texto escrito con más de 2 decimales → cortado a 2 ('2,879' → '2.87'); si no, se deja igual. */
   const cut2 = (txt) => { const t = String(txt ?? '').trim().replace(',', '.'); const v = parseFloat(t); return /^-?\d*\.\d{3,}$/.test(t) && Number.isFinite(v) ? trunc(v, 2).toFixed(2) : String(txt ?? ''); };
   const icon = (id) => `<svg><use href="#i-${id}"/></svg>`;
+
+  /* ---------- Formato de los datos del cliente (se aplica al salir de cada campo) ---------- */
+  const miles = (d) => d.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  /** Cédula o NIT: 1234567890 → 1.234.567.890 · 9011262433 / 901126243-3 → 901.126.243-3 */
+  function fmtDoc(txt) {
+    const t = String(txt || '').trim(); if (!t) return '';
+    const m = t.replace(/[\s.,]/g, '').match(/^(\d{5,12})(?:-(\d))?$/);
+    if (!m) return t.replace(/\s+/g, ' '); // pasaporte, cédula de extranjería u otro formato: se deja como se escribió
+    const [, num, dv] = m;
+    if (dv) return `${miles(num)}-${dv}`;
+    // NIT de empresa sin guion: 10 dígitos que empiezan por 8 o 9 → el último es el dígito de verificación
+    if (num.length === 10 && /^[89]/.test(num)) return `${miles(num.slice(0, 9))}-${num.slice(9)}`;
+    return miles(num);
+  }
+  /** Teléfono: 3001234567 → 300 123 4567 · 6017654321 → 601 765 4321 · +573001234567 → +57 300 123 4567 · varios con " / " */
+  function fmtTel(txt) {
+    const uno = (p) => {
+      let d = p.replace(/\D/g, ''), pre = '';
+      if (d.length === 12 && d.startsWith('57')) { pre = '+57 '; d = d.slice(2); }
+      if (d.length === 10) return pre + `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6)}`;
+      if (d.length === 7) return `${d.slice(0, 3)} ${d.slice(3)}`;
+      return p.trim().replace(/\s+/g, ' ');
+    };
+    return String(txt || '').split(/\s*[\/,;]\s*|\s+-\s+|(?<=\d{10})-(?=\d)|\s{2,}/).filter((x) => x.trim()).map(uno).join(' / ');
+  }
+  /** Nombre y dirección en mayúsculas, sin espacios dobles: «calle 10 # 5a-23» → «CALLE 10 #5A - 23» */
+  const fmtMay = (txt) => String(txt || '').toLocaleUpperCase('es-CO').replace(/\s+/g, ' ').trim();
+  const fmtDir = (txt) => fmtMay(txt).replace(/\s*#\s*/g, ' #').replace(/\s*-\s*/g, ' - ').replace(/\s+/g, ' ').trim();
+  const fmtTexto = (txt) => String(txt || '').replace(/\s+/g, ' ').trim();
+  const FORMATO = { name: fmtMay, id: fmtDoc, phone: fmtTel, address: fmtDir, city: fmtTexto, ref: fmtTexto };
   const STORE = 'tgs-state-v2';
 
   /* ============================== ESTADO ============================== */
@@ -42,7 +72,7 @@
     const out = { ...d, client: {} };
     ['mode', 'city', 'altitude', 'patm', 'gas', 'G', 'factorLE', 'pcs'].forEach((k) => { if (s[k] != null) out[k] = s[k]; });
     // Solo se aceptan los campos conocidos y con longitud limitada (datos guardados o archivos externos).
-    ['name', 'id', 'phone', 'address', 'city', 'ref'].forEach((k) => { if (s.client && s.client[k] != null) out.client[k] = str(s.client[k], 160); });
+    ['name', 'id', 'phone', 'address', 'city', 'ref'].forEach((k) => { if (s.client && s.client[k] != null) out.client[k] = FORMATO[k](str(s.client[k], 160)); });
     ['altitude', 'patm', 'G', 'factorLE'].forEach((k) => { out[k] = str(out[k], 20); });
     out.city = str(out.city, 10); out.gas = str(out.gas, 10);
     out.pcs = out.pcs && typeof out.pcs === 'object' ? Object.fromEntries(Object.entries(out.pcs).filter(([k, v]) => E.GASES[k] && E.num(v) > 0).map(([k, v]) => [k, E.num(v)])) : {};
@@ -197,7 +227,20 @@
       toast(`${fmt(v, 0)} mbar es ${want === 'media' ? 'media' : 'baja'} presión: se cambió automáticamente`, 'ok', 4500);
       setMode(want);
     });
-    $$('[data-client]').forEach((el) => el.addEventListener('input', () => { state.client[el.dataset.client] = el.value; persist(); refPlaceholder(); }));
+    $$('[data-client]').forEach((el) => {
+      el.addEventListener('input', () => { state.client[el.dataset.client] = el.value; persist(); refPlaceholder(); });
+      // Al salir del campo se ordena el dato: puntos en la cédula, espacios en el teléfono, mayúsculas en nombre y dirección.
+      el.addEventListener('change', () => {
+        const k = el.dataset.client, f = FORMATO[k]; const v = f ? f(el.value) : el.value;
+        if (v !== el.value) el.value = v; state.client[k] = v; persist(); refPlaceholder();
+        // Teléfono: celular de 10 dígitos o fijo de 7 (con o sin +57); si no, se marca para revisarlo.
+        if (k === 'phone') {
+          const malo = !!v && v.split(' / ').some((p) => !/^(\+57 )?\d{3} \d{3} \d{4}$|^\d{3} \d{4}$/.test(p));
+          el.classList.toggle('invalid', malo);
+          if (malo) toast('Revise el teléfono: el celular tiene 10 dígitos y el fijo 7', 'bad', 4500);
+        }
+      });
+    });
   }
 
   /* ============================== MODO ============================== */
@@ -796,6 +839,11 @@
       if (last) renderCharts(last);
     });
     matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => last && renderCharts(last));
+    // Al imprimir: gráficas redibujadas al tamaño de la hoja y en alta resolución (nítidas, sin estirarse).
+    const paraImprimir = () => { if (views) { views.profile.render(3); views.vel.render(3); } };
+    window.addEventListener('beforeprint', paraImprimir);
+    window.addEventListener('afterprint', () => { if (views) { views.profile.render(); views.vel.render(); } });
+    const mqPrint = matchMedia('print'); if (mqPrint.addEventListener) mqPrint.addEventListener('change', (e) => { if (e.matches) paraImprimir(); });
     $$('.mode-btn').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
     let deferred = null;
     window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e; $('#installBtn').hidden = false; });

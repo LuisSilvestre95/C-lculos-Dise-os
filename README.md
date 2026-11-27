@@ -78,3 +78,8 @@ Todos los valores usan **2 decimales cortados, sin redondear** (2.879 → 2.87):
 - **Caudal por potencia:** propone el primer tramo sin caudal; escriba una vez el PCS del distribuidor y la app lo recuerda.
 - **Línea principal:** el botón «Calcular la línea principal desde las cargas» la deja igual a la suma de las cargas de los gasodomésticos.
 - **Exportar:** si alguna tee no cuadra, la app avisa antes de generar el PDF.
+
+## Datos del cliente e impresión
+
+- Al salir de cada campo los datos quedan ordenados (ejemplos ficticios): cédula **1.234.567.890**, NIT **900.123.456-7**, teléfono **300 123 4567** (varios separados con « / »), nombre y dirección en mayúsculas (**CALLE 10 #5A - 23**). Si el teléfono no tiene 10 dígitos (celular) o 7 (fijo), se marca para revisarlo.
+- **Imprimir** produce una hoja limpia en horizontal: resumen, parámetros, cliente, tabla completa (el encabezado se repite en cada hoja), gráficas y firma. No se imprimen los campos de edición, los botones ni la resta interna.

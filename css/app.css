@@ -416,3 +416,63 @@ body[data-mode="media"] .only-baja { display: none; }
 /* Botón de texto (Reparar la app) */
 .link-btn { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .link-btn:hover { color: var(--ink); }
+
+/* ================= Impresión: hoja limpia, como la memoria en PDF ================= */
+.print-only { display: none; }
+@media print {
+  @page { size: letter landscape; margin: 9mm 10mm; }
+  html, body { background: #fff !important; }
+  body { font-size: 10.5px; }
+  .main { gap: 8px !important; padding: 6px 0 0 !important; max-width: none !important; }
+  /* Fuera lo que es solo para trabajar en pantalla */
+  .card-tramos, .export-card, .formulas, .criteria, .header-actions, .mode-switch, .toasts, #installBtn,
+  .field small, .notice, .legend-line, #tgs-fallo, .app-footer, .busy, .modal-back, #modal { display: none !important; }
+  .card, .hero-status, .kpi, .chart-card { box-shadow: none !important; animation: none !important; break-inside: avoid; }
+  .card { border: 1px solid #d8e3ea !important; }
+  .card-title { padding: 7px 12px !important; font-size: 11px !important; }
+  .card-body { padding: 8px 12px !important; }
+  /* Encabezado con la marca */
+  .app-header { position: static !important; padding: 10px 14px !important; border-radius: 10px; }
+  /* Resumen en una sola fila */
+  .hero { grid-template-columns: 1.2fr 3fr !important; gap: 8px !important; }
+  .kpis { grid-template-columns: repeat(4, 1fr) !important; gap: 8px !important; }
+  .hero-status, .kpi { padding: 8px 10px !important; }
+  .hero-value { font-size: 20px !important; }
+  /* Parámetros y cliente lado a lado; los campos se ven como texto, no como casillas */
+  .grid-2 { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+  .fields { gap: 4px 12px !important; }
+  .field label { font-size: 8.5px !important; margin: 0 !important; }
+  .field input, .field select { border: 0 !important; background: none !important; box-shadow: none !important; padding: 0 !important; min-height: 0 !important; height: auto !important;
+    -webkit-appearance: none; appearance: none; font-size: 11px !important; font-weight: 700; color: #10283a !important; }
+  .field input::placeholder { color: transparent !important; }
+  .field select { background-image: none !important; }
+  .only-custom, .only-other { display: none !important; }
+  body.city-custom .only-custom, body.gas-other .only-other { display: block !important; }
+  /* Resultados: tabla completa (no tarjetas), encabezado repetido en cada hoja */
+  .table-scroll { overflow: visible !important; border: 0 !important; }
+  .res-table { display: table !important; width: 100% !important; border-collapse: collapse !important; font-size: 9px !important; }
+  .res-table thead { display: table-header-group !important; }
+  .res-table tbody { display: table-row-group !important; }
+  .res-table tr { display: table-row !important; margin: 0 !important; border: 0 !important; break-inside: avoid; }
+  .res-table th, .res-table td { display: table-cell !important; position: static !important; padding: 3px 3px !important; border: 1px solid #d8e3ea !important; font-size: 9px !important; white-space: nowrap; }
+  .res-table th { font-size: 8px !important; }
+  .res-table td::before { content: none !important; }
+  .res-table td.r-head, .res-table tbody tr td.r-head, .res-table tbody tr:nth-child(even) td.r-head { background: #f4f8fb !important; color: #10283a !important; font-weight: 800; font-size: 9px !important; }
+  .res-table .st { font-size: 8px !important; padding: 1px 5px !important; }
+  /* Gráficas lado a lado */
+  .charts { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 8px !important; break-inside: avoid; }
+  .chart-box { height: 190px !important; }
+  .chart-box canvas { width: 100% !important; height: 100% !important; object-fit: contain; }
+  /* Campos vacíos (por ejemplo «Informe» sin texto) no se imprimen */
+  .field:has(input:placeholder-shown) { display: none !important; }
+  #autoLine { margin-top: 6px !important; padding: 5px 8px !important; font-size: 9.5px !important; background: #f4f8fb !important; border: 0 !important; }
+  /* Firma al final, igual que en el PDF */
+  .print-only { display: flex !important; }
+  .print-firma { justify-content: space-between; align-items: flex-end; gap: 20px; padding: 6px 4px 0; break-inside: avoid; }
+  .pf-empresa { display: flex; align-items: center; gap: 12px; }
+  .pf-empresa img { width: 64px; height: auto; }
+  .pf-empresa div, .pf-firma { display: flex; flex-direction: column; font-size: 9.5px; color: #3c5569; line-height: 1.35; }
+  .pf-empresa b, .pf-firma b { color: #10283a; font-size: 10.5px; }
+  .pf-firma { align-items: center; text-align: center; min-width: 240px; }
+  .pf-firma img { width: 160px; height: auto; border-bottom: 1px solid #10283a; padding-bottom: 2px; margin-bottom: 3px; }
+}

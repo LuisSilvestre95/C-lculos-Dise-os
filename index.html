@@ -177,10 +177,10 @@
       <h2 class="card-title"><svg><use href="#i-user"/></svg>Cliente y proyecto</h2>
       <div class="card-body">
         <div class="fields">
-          <div class="field span-2"><label for="cName">Nombre / razón social</label><input id="cName" data-client="name" placeholder="Nombre completo" autocomplete="name"></div>
-          <div class="field"><label for="cId">Cédula / NIT</label><input id="cId" data-client="id" placeholder="Ej. 79.295.777"></div>
+          <div class="field span-2"><label for="cName">Nombre / razón social</label><input id="cName" data-client="name" placeholder="Nombre completo" autocomplete="name" autocapitalize="characters" spellcheck="false"></div>
+          <div class="field"><label for="cId">Cédula / NIT</label><input id="cId" data-client="id" placeholder="Ej. 79.295.777" autocomplete="off" spellcheck="false"></div>
           <div class="field"><label for="cPhone">Teléfono</label><input id="cPhone" data-client="phone" placeholder="Ej. 322 361 8360" inputmode="tel" autocomplete="tel"></div>
-          <div class="field span-2"><label for="cAddress">Dirección de la instalación</label><input id="cAddress" data-client="address" placeholder="Dirección" autocomplete="street-address"></div>
+          <div class="field span-2"><label for="cAddress">Dirección de la instalación</label><input id="cAddress" data-client="address" placeholder="Dirección" autocomplete="street-address" autocapitalize="characters" spellcheck="false"></div>
           <div class="field"><label for="cCity">Municipio</label><input id="cCity" data-client="city" placeholder="Municipio"></div>
           <div class="field"><label for="cRef">Informe</label><input id="cRef" data-client="ref" placeholder="Nombre del cliente"><small>Usa el nombre del cliente. Escriba aquí solo si quiere otro.</small></div>
         </div>
@@ -189,7 +189,7 @@
   </div>
 
   <!-- TRAMOS -->
-  <section class="card">
+  <section class="card card-tramos">
     <h2 class="card-title accent"><svg><use href="#i-route"/></svg><span id="segTitle">Tramos de la red</span>
       <span class="title-actions">
         <button class="chip-btn" id="flowCalcBtn" type="button"><svg><use href="#i-calc"/></svg>Caudal por potencia</button>
@@ -246,6 +246,11 @@
   </section>
 
   <!-- EXPORTAR -->
+  <section class="print-only print-firma" aria-hidden="true">
+    <div class="pf-empresa"><img src="assets/logo.png" alt="" width="96" height="102"><div><b>TODO GAS SYR S.A.S.</b><span>NIT 901.126.243-3</span><span>Diseño, cálculo e instalación de redes de gas</span><span>Tel. 322 361 8360 · 320 948 5534 · Colombia</span></div></div>
+    <div class="pf-firma"><img src="assets/firma.png" alt="" width="180" height="45"><b>Luis Silvestre</b><span>Ingeniero · MP 041122-0809747 BYC - COPNIA</span><span>Responsable del diseño y cálculos</span></div>
+  </section>
+
   <section class="card export-card">
     <h2 class="card-title"><svg><use href="#i-pdf"/></svg>Exportar y guardar</h2>
     <div class="card-body export-grid">
@@ -281,7 +286,7 @@
     <div>
       <p><b>TODO GAS SYR S.A.S.</b> · NIT 901.126.243-3 · Colombia</p>
       <p>Diseño y cálculos: Luis Silvestre · Ingeniero MP 041122-0809747 BYC — COPNIA</p>
-      <p>Tel. 322 361 8360 · 320 948 5534 · © 2026 · <span class="app-version">Versión 3.13</span> · <button type="button" class="link-btn" id="repairBtn" title="Descarga de nuevo la app sin borrar sus proyectos">Reparar la app</button></p>
+      <p>Tel. 322 361 8360 · 320 948 5534 · © 2026 · <span class="app-version">Versión 3.14</span> · <button type="button" class="link-btn" id="repairBtn" title="Descarga de nuevo la app sin borrar sus proyectos">Reparar la app</button></p>
     </div>
   </div>
 </footer>
