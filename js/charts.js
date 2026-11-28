@@ -58,7 +58,7 @@
       return null;
     }
     // Leyenda (gráfica de presión): se reparte en uno o más renglones según el ancho disponible.
-    const LEY = { 'Línea principal': ['line', 's1', 3], 'Derivación': ['line', 's2', 2], 'Inicio': ['dot', 'ink', 4.5], 'Tee': ['dot', 'tee', 5.5], 'Consumo': ['dot', 's2', 4] };
+    const LEY = { 'Línea principal': ['line', 's1', 3], 'Derivación': ['line', 's2', 2], 'Inicio': ['dot', 'ink', 4.5], 'Accesorio': ['dot', 'tee', 5.5], 'Consumo': ['dot', 's2', 4] };
     let leyenda = [];
     if (spec.legend && spec.legend.length) {
       ctx.font = F(9.5, 600); let fila = 0, x = 0; const ancho = w - 60 * fs;
@@ -165,7 +165,7 @@
     } else if (spec.kind === 'dots') {
       // Plano de presiones de la red: un punto por nodo (eje X por categorías) y una línea por tramo.
       //   línea principal: gruesa, azul · derivación a un gasodoméstico: más delgada, naranja
-      //   inicio: azul oscuro · tee (de donde sale otra línea): dorada y más grande · punto de consumo: naranja
+      //   inicio: azul oscuro · accesorio (tee, reducción, regulador…): dorado y más grande · punto de consumo: naranja
       const n = spec.bars.length, slot = (X1 - X0) / n;
       const px = (i) => X0 + slot * (i + 0.5);
       const C = { main: t.s1, branch: t.s2, tee: t.tee || '#f2a900', source: t.ink, end: t.s2 };
@@ -194,7 +194,7 @@
         const rad = role === 'tee' ? base * 1.45 : role === 'source' ? base * 1.3 : base;
         const fill = b.status === 'bad' ? t.bad : b.status === 'warn' ? t.warn : (C[role] || C.main);
         ctx.globalAlpha = hover && hover.index !== i ? 0.55 : 1;
-        // halo suave en las tees, para que se distingan de un vistazo
+        // halo suave en los accesorios, para que se distingan de un vistazo
         if (role === 'tee' && big) { ctx.beginPath(); ctx.arc(cx, y, rad + 3.5 * fs, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.globalAlpha *= 0.22; ctx.fill(); ctx.globalAlpha = hover && hover.index !== i ? 0.55 : 1; }
         ctx.beginPath(); ctx.arc(cx, y, rad, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill();
         ctx.lineWidth = Math.min(1.8 * fs, rad * 0.45); ctx.strokeStyle = role === 'tee' ? t.ink : t.surface; ctx.stroke(); ctx.globalAlpha = 1;
@@ -225,7 +225,7 @@
         leyenda.forEach(({ k, x, fila }) => {
           const [tipo, c, tam] = LEY[k]; const lx = X0 - 30 * fs + x + 8 * fs, ly = (9 + fila * 15) * fs;
           if (tipo === 'line') { ctx.strokeStyle = col[c]; ctx.lineWidth = tam * fs; ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + 16 * fs, ly); ctx.stroke(); }
-          else { ctx.beginPath(); ctx.arc(lx + 8 * fs, ly, tam * fs, 0, Math.PI * 2); ctx.fillStyle = col[c]; ctx.fill(); ctx.lineWidth = 1.3 * fs; ctx.strokeStyle = k === 'Tee' ? t.ink : t.surface; ctx.stroke(); }
+          else { ctx.beginPath(); ctx.arc(lx + 8 * fs, ly, tam * fs, 0, Math.PI * 2); ctx.fillStyle = col[c]; ctx.fill(); ctx.lineWidth = 1.3 * fs; ctx.strokeStyle = k === 'Accesorio' ? t.ink : t.surface; ctx.stroke(); }
           ctx.fillStyle = t.ink2; ctx.fillText(k, lx + 21 * fs, ly);
         });
         ctx.textAlign = 'center';

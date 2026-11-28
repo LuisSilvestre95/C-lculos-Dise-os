@@ -597,23 +597,34 @@
     const nodes = [], at = new Map(), links = [];
     const add = (label, value, status, tip) => { if (!at.has(label)) { at.set(label, nodes.length); nodes.push({ label, value, status, tip }); } return at.get(label); };
     const vr = res.order.map((i) => res.rows[i]).filter((r) => r && r.valid);
-    // Cuántos tramos salen de cada nodo: 2 o más = tee; ninguno = punto de consumo.
-    const salen = new Map(); vr.forEach((r) => salen.set(r.from, (salen.get(r.from) || 0) + 1));
-    const papel = (nodo, inicio) => (inicio ? 'source' : (salen.get(nodo) || 0) >= 2 ? 'tee' : (salen.get(nodo) || 0) === 0 ? 'end' : 'main');
-    const nombre = { source: 'inicio', tee: 'tee', end: 'punto de consumo', main: 'línea principal' };
+    // Papel de cada nodo:
+    //   accesorio = donde sale otra línea (tee, derivación), donde cambia el diámetro (reducción / ampliación)
+    //               o donde llega o sale un tramo corto entre accesorios (≤ 0.10 m: regulador, codo, tee, unión…)
+    //   consumo = de donde no sale ningún tramo (gasodoméstico) · inicio = punto de suministro
+    const salen = new Map(), llega = new Map();
+    vr.forEach((r) => { if (!salen.has(r.from)) salen.set(r.from, []); salen.get(r.from).push(r); llega.set(r.fin, r); });
+    const tipoAcc = (nodo) => {
+      const out = salen.get(nodo) || [], inn = llega.get(nodo);
+      if (out.length >= 2) return 'derivación (tee)';
+      if (inn && out.some((o) => Math.abs(o.d - inn.d) > 0.05)) return out[0].d < inn.d ? 'reducción de diámetro' : 'ampliación de diámetro';
+      if ((inn && inn.acc) || out.some((o) => o.acc)) return 'accesorio';
+      return '';
+    };
+    const papel = (nodo, inicio) => (inicio ? 'source' : !(salen.get(nodo) || []).length ? 'end' : tipoAcc(nodo) ? 'tee' : 'main');
+    const nombre = (nodo, rol) => (rol === 'source' ? 'inicio' : rol === 'end' ? 'punto de consumo' : rol === 'tee' ? 'accesorio: ' + tipoAcc(nodo) : 'línea principal');
     vr.forEach((r) => {
       const ini = r.parent < 0;
-      const a = at.has(r.from) ? at.get(r.from) : add(r.from, trunc(r.pi), 'ok', `<b>Nodo ${esc(r.from)} · ${nombre[papel(r.from, true)]}</b>${fmt(r.pi, 2)} mbar`);
+      const a = at.has(r.from) ? at.get(r.from) : add(r.from, trunc(r.pi), 'ok', `<b>Nodo ${esc(r.from)} · ${nombre(r.from, 'source')}</b>${fmt(r.pi, 2)} mbar`);
       if (ini) nodes[a].role = 'source';
       const rol = papel(r.fin, false);
       const b = add(r.fin, trunc(r.pf), r.pf < p.crit.pmin ? 'bad' : 'ok',
-        `<b>Nodo ${esc(r.fin)} · ${nombre[rol]}</b>${fmt(r.pf, 2)} mbar al final del tramo ${esc(r.ini)}-${esc(r.fin)}<br>Pérdida en el tramo ${shownDrop(r.pi, r.pf)} mbar`);
+        `<b>Nodo ${esc(r.fin)} · ${nombre(r.fin, rol)}</b>${fmt(r.pf, 2)} mbar al final del tramo ${esc(r.ini)}-${esc(r.fin)}<br>Pérdida en el tramo ${shownDrop(r.pi, r.pf)} mbar`);
       nodes[b].role = rol;
       // Tramo que llega a un punto de consumo = derivación; el resto = línea principal.
       links.push([a, b, rol === 'end' ? 'branch' : 'main']);
     });
     const hay = (r) => nodes.some((x) => x.role === r);
-    const legend = ['Línea principal', ...(links.some((l) => l[2] === 'branch') ? ['Derivación'] : []), 'Inicio', ...(hay('tee') ? ['Tee'] : []), ...(hay('end') ? ['Consumo'] : [])];
+    const legend = ['Línea principal', ...(links.some((l) => l[2] === 'branch') ? ['Derivación'] : []), 'Inicio', ...(hay('tee') ? ['Accesorio'] : []), ...(hay('end') ? ['Consumo'] : [])];
     const profile = {
       kind: 'dots', bars: nodes, links, legend, xLabel: 'Nodo', yLabel: 'Presión (mbar)', minSpan: Math.max(1, 0.05 * Math.max(...nodes.map((x) => x.value))),
       refs: p.crit.pmin > 0 ? [{ y: p.crit.pmin, label: `Mínima ${p.crit.pmin} mbar` }] : []
