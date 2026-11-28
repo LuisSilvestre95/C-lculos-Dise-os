@@ -596,14 +596,26 @@
     // la línea sigue la tubería real, de la tee a cada punto, y siempre baja en el sentido del gas.
     const nodes = [], at = new Map(), links = [];
     const add = (label, value, status, tip) => { if (!at.has(label)) { at.set(label, nodes.length); nodes.push({ label, value, status, tip }); } return at.get(label); };
-    res.order.map((i) => res.rows[i]).filter((r) => r && r.valid).forEach((r) => {
-      const a = at.has(r.from) ? at.get(r.from) : add(r.from, trunc(r.pi), 'ok', `<b>Nodo ${esc(r.from)} (inicio)</b>${fmt(r.pi, 2)} mbar`);
+    const vr = res.order.map((i) => res.rows[i]).filter((r) => r && r.valid);
+    // Cuántos tramos salen de cada nodo: 2 o más = tee; ninguno = punto de consumo.
+    const salen = new Map(); vr.forEach((r) => salen.set(r.from, (salen.get(r.from) || 0) + 1));
+    const papel = (nodo, inicio) => (inicio ? 'source' : (salen.get(nodo) || 0) >= 2 ? 'tee' : (salen.get(nodo) || 0) === 0 ? 'end' : 'main');
+    const nombre = { source: 'inicio', tee: 'tee', end: 'punto de consumo', main: 'línea principal' };
+    vr.forEach((r) => {
+      const ini = r.parent < 0;
+      const a = at.has(r.from) ? at.get(r.from) : add(r.from, trunc(r.pi), 'ok', `<b>Nodo ${esc(r.from)} · ${nombre[papel(r.from, true)]}</b>${fmt(r.pi, 2)} mbar`);
+      if (ini) nodes[a].role = 'source';
+      const rol = papel(r.fin, false);
       const b = add(r.fin, trunc(r.pf), r.pf < p.crit.pmin ? 'bad' : 'ok',
-        `<b>Nodo ${esc(r.fin)}</b>${fmt(r.pf, 2)} mbar al final del tramo ${esc(r.ini)}-${esc(r.fin)}<br>Pérdida en el tramo ${shownDrop(r.pi, r.pf)} mbar`);
-      links.push([a, b]);
+        `<b>Nodo ${esc(r.fin)} · ${nombre[rol]}</b>${fmt(r.pf, 2)} mbar al final del tramo ${esc(r.ini)}-${esc(r.fin)}<br>Pérdida en el tramo ${shownDrop(r.pi, r.pf)} mbar`);
+      nodes[b].role = rol;
+      // Tramo que llega a un punto de consumo = derivación; el resto = línea principal.
+      links.push([a, b, rol === 'end' ? 'branch' : 'main']);
     });
+    const hay = (r) => nodes.some((x) => x.role === r);
+    const legend = ['Línea principal', ...(links.some((l) => l[2] === 'branch') ? ['Derivación'] : []), 'Inicio', ...(hay('tee') ? ['Tee'] : []), ...(hay('end') ? ['Consumo'] : [])];
     const profile = {
-      kind: 'dots', bars: nodes, links, xLabel: 'Nodo', yLabel: 'Presión (mbar)', minSpan: Math.max(1, 0.05 * Math.max(...nodes.map((x) => x.value))),
+      kind: 'dots', bars: nodes, links, legend, xLabel: 'Nodo', yLabel: 'Presión (mbar)', minSpan: Math.max(1, 0.05 * Math.max(...nodes.map((x) => x.value))),
       refs: p.crit.pmin > 0 ? [{ y: p.crit.pmin, label: `Mínima ${p.crit.pmin} mbar` }] : []
     };
     const vel = {

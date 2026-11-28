@@ -57,7 +57,19 @@
       ctx.fillText(spec && spec.emptyText ? spec.emptyText : 'Sin datos para graficar', w / 2, h / 2);
       return null;
     }
-    const pad = { l: 46 * fs, r: 14 * fs, t: 18 * fs, b: 36 * fs };
+    // Leyenda (gráfica de presión): se reparte en uno o más renglones según el ancho disponible.
+    const LEY = { 'Línea principal': ['line', 's1', 3], 'Derivación': ['line', 's2', 2], 'Inicio': ['dot', 'ink', 4.5], 'Tee': ['dot', 'tee', 5.5], 'Consumo': ['dot', 's2', 4] };
+    let leyenda = [];
+    if (spec.legend && spec.legend.length) {
+      ctx.font = F(9.5, 600); let fila = 0, x = 0; const ancho = w - 60 * fs;
+      spec.legend.filter((k) => LEY[k]).forEach((k) => {
+        const wd = 22 * fs + ctx.measureText(k).width + 12 * fs;
+        if (x > 0 && x + wd > ancho) { fila++; x = 0; }
+        leyenda.push({ k, x, fila }); x += wd;
+      });
+    }
+    const filasLey = leyenda.length ? Math.max(...leyenda.map((l) => l.fila)) + 1 : 0;
+    const pad = { l: 46 * fs, r: 14 * fs, t: (filasLey ? 14 + filasLey * 15 : 18) * fs, b: 36 * fs };
     const Y0 = pad.t, Y1 = h - pad.b;
 
     // Dominio Y
@@ -151,42 +163,73 @@
       });
       layout.sx = sx;
     } else if (spec.kind === 'dots') {
-      // Un punto por nodo (eje X por categorías) con su valor escrito encima: fácil de leer.
+      // Plano de presiones de la red: un punto por nodo (eje X por categorías) y una línea por tramo.
+      //   línea principal: gruesa, azul · derivación a un gasodoméstico: más delgada, naranja
+      //   inicio: azul oscuro · tee (de donde sale otra línea): dorada y más grande · punto de consumo: naranja
       const n = spec.bars.length, slot = (X1 - X0) / n;
-      // Líneas que unen los puntos: una por tramo (de su nodo de inicio a su nodo final) si se dan los enlaces;
-      // si no, una línea continua en el orden de los nodos.
       const px = (i) => X0 + slot * (i + 0.5);
-      const links = spec.links || spec.bars.slice(1).map((_, i) => [i, i + 1]);
-      ctx.strokeStyle = spec.color || t.s1; ctx.lineWidth = 1.75 * fs; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-      links.forEach(([i, j]) => {
-        const a = spec.bars[i], b = spec.bars[j]; if (!a || !b) return;
-        ctx.beginPath(); ctx.moveTo(px(i), sy(a.value)); ctx.lineTo(px(j), sy(b.value)); ctx.stroke();
+      const C = { main: t.s1, branch: t.s2, tee: t.tee || '#f2a900', source: t.ink, end: t.s2 };
+      const links = spec.links || spec.bars.slice(1).map((_, i) => [i, i + 1, 'main']);
+      const big = slot >= 14;
+      ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      // Primero las derivaciones (debajo) y luego la línea principal (encima).
+      ['branch', 'main'].forEach((tipo) => {
+        links.filter((l) => (l[2] || 'main') === tipo).forEach(([i, j]) => {
+          const a = spec.bars[i], b = spec.bars[j]; if (!a || !b) return;
+          ctx.strokeStyle = C[tipo]; ctx.lineWidth = (tipo === 'main' ? 3 : 2) * fs * (big ? 1 : 0.7);
+          ctx.globalAlpha = tipo === 'main' ? 1 : 0.9;
+          ctx.beginPath(); ctx.moveTo(px(i), sy(a.value)); ctx.lineTo(px(j), sy(b.value)); ctx.stroke();
+        });
       });
-      ctx.textAlign = 'center';
+      ctx.globalAlpha = 1; ctx.textAlign = 'center';
       const lblFont = F(n > 14 ? 9 : 10.5, 700), step = labelStep(ctx, spec.bars.map((b) => b.label), slot, lblFont);
-      const rad = Math.max(1.8, Math.min(4.2, slot * 0.28)) * (slot < 8 ? 1 : fs);
+      const base = Math.max(1.8, Math.min(4.6, slot * 0.28)) * (slot < 8 ? 1 : fs);
+      const placed = []; // etiquetas ya escritas, para que ninguna se monte sobre otra
+      const libre = (x, y, wd, ht) => !placed.some((p) => Math.abs(p.x - x) < (p.w + wd) / 2 + 2 * fs && Math.abs(p.y - y) < (p.h + ht) / 2);
       spec.bars.forEach((b, i) => {
-        const cx = X0 + slot * (i + 0.5), y = sy(b.value);
-        const col = b.status === 'bad' ? t.bad : b.status === 'warn' ? t.warn : (spec.color || t.s1);
+        const cx = px(i), y = sy(b.value), role = b.role || 'main';
         // guía vertical suave desde el eje hasta el punto
         if (n <= 30) { ctx.strokeStyle = t.grid; ctx.lineWidth = 1; ctx.setLineDash([2 * fs, 3 * fs]);
-          ctx.beginPath(); ctx.moveTo(Math.round(cx) + 0.5, Y1); ctx.lineTo(Math.round(cx) + 0.5, y); ctx.stroke(); ctx.setLineDash([]); }
+          ctx.beginPath(); ctx.moveTo(Math.round(cx) + 0.5, Y1); ctx.lineTo(Math.round(cx) + 0.5, y + base); ctx.stroke(); ctx.setLineDash([]); }
+        const rad = role === 'tee' ? base * 1.45 : role === 'source' ? base * 1.3 : base;
+        const fill = b.status === 'bad' ? t.bad : b.status === 'warn' ? t.warn : (C[role] || C.main);
         ctx.globalAlpha = hover && hover.index !== i ? 0.55 : 1;
-        ctx.beginPath(); ctx.arc(cx, y, rad, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
-        ctx.lineWidth = Math.min(1.6 * fs, rad * 0.4); ctx.strokeStyle = t.surface; ctx.stroke(); ctx.globalAlpha = 1;
+        // halo suave en las tees, para que se distingan de un vistazo
+        if (role === 'tee' && big) { ctx.beginPath(); ctx.arc(cx, y, rad + 3.5 * fs, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.globalAlpha *= 0.22; ctx.fill(); ctx.globalAlpha = hover && hover.index !== i ? 0.55 : 1; }
+        ctx.beginPath(); ctx.arc(cx, y, rad, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill();
+        ctx.lineWidth = Math.min(1.8 * fs, rad * 0.45); ctx.strokeStyle = role === 'tee' ? t.ink : t.surface; ctx.stroke(); ctx.globalAlpha = 1;
         if (n <= 18) {
-          ctx.fillStyle = t.ink; ctx.font = F(n > 12 ? 8.5 : 9.5, 700);
-          // Si los valores no caben uno al lado del otro, se alternan arriba y abajo del punto.
-          const tight = ctx.measureText(b.value.toFixed(2)).width + 6 * fs > slot;
-          const below = tight && i % 2 === 1;
-          ctx.textBaseline = below ? 'top' : 'bottom';
-          ctx.fillText(b.value.toFixed(2), cx, below ? y + 7 * fs : y - 7 * fs);
+          // Valor de presión: arriba del punto; en los puntos de consumo, debajo (así no chocan con la línea principal).
+          ctx.font = F(n > 12 ? 8.5 : 9.5, 700);
+          const txt = b.value.toFixed(2), tw = ctx.measureText(txt).width, th = 11 * fs;
+          const arriba = { y: y - rad - 3 * fs - th / 2 }, abajo = { y: y + rad + 3 * fs + th / 2 };
+          const orden = role === 'end' ? [abajo, arriba] : [arriba, abajo];
+          const pos = orden.find((p) => p.y - th / 2 > Y0 - 14 * fs && p.y + th / 2 < Y1 && libre(cx, p.y, tw, th));
+          if (pos) {
+            ctx.textBaseline = 'middle';
+            // fondo del color de la tarjeta para que el número se lea aunque pase una línea por detrás
+            ctx.fillStyle = t.surface; ctx.globalAlpha = 0.85; ctx.fillRect(cx - tw / 2 - 2 * fs, pos.y - th / 2, tw + 4 * fs, th); ctx.globalAlpha = 1;
+            ctx.fillStyle = b.status === 'bad' ? t.bad : t.ink; ctx.fillText(txt, cx, pos.y);
+            placed.push({ x: cx, y: pos.y, w: tw, h: th });
+          }
         }
-        ctx.fillStyle = t.ink2; ctx.font = lblFont; ctx.textBaseline = 'top';
+        ctx.fillStyle = role === 'tee' ? t.ink : t.ink2; ctx.font = lblFont; ctx.textBaseline = 'top';
         if (i % step === 0) ctx.fillText(b.label, cx, Y1 + 7 * fs);
         layout.items.push({ px: cx, py: y, w: slot, ...b });
       });
       if (spec.xLabel) { ctx.fillStyle = t.ink2; ctx.font = F(10, 600); ctx.textBaseline = 'top'; ctx.fillText(spec.xLabel, (X0 + X1) / 2, Y1 + 20 * fs); }
+      // Leyenda arriba de la gráfica
+      if (leyenda.length) {
+        ctx.font = F(9.5, 600); ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+        const col = { s1: C.main, s2: C.branch, ink: C.source, tee: C.tee };
+        leyenda.forEach(({ k, x, fila }) => {
+          const [tipo, c, tam] = LEY[k]; const lx = X0 - 30 * fs + x + 8 * fs, ly = (9 + fila * 15) * fs;
+          if (tipo === 'line') { ctx.strokeStyle = col[c]; ctx.lineWidth = tam * fs; ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + 16 * fs, ly); ctx.stroke(); }
+          else { ctx.beginPath(); ctx.arc(lx + 8 * fs, ly, tam * fs, 0, Math.PI * 2); ctx.fillStyle = col[c]; ctx.fill(); ctx.lineWidth = 1.3 * fs; ctx.strokeStyle = k === 'Tee' ? t.ink : t.surface; ctx.stroke(); }
+          ctx.fillStyle = t.ink2; ctx.fillText(k, lx + 21 * fs, ly);
+        });
+        ctx.textAlign = 'center';
+      }
     } else {
       const n = spec.bars.length;
       const slot = (X1 - X0) / n;
@@ -261,7 +304,10 @@
       this.tip.innerHTML = best.item.tip || '';
       this.tip.hidden = !best.item.tip;
       const left = Math.max(70, Math.min(r.width - 70, best.item.px));
-      this.tip.style.left = left + 'px'; this.tip.style.top = Math.max(best.item.py, 40) + 'px';
+      // Si el punto está cerca del borde de arriba, el recuadro va debajo del punto (no se corta).
+      const abajo = best.item.py < 90;
+      this.tip.classList.toggle('below', abajo);
+      this.tip.style.left = left + 'px'; this.tip.style.top = (abajo ? best.item.py + 14 : best.item.py) + 'px';
     }
     clearHover() { this.hover = null; this.tip.hidden = true; this.render(); }
   }
